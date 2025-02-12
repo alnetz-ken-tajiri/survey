@@ -171,8 +171,8 @@ importers:
         specifier: ^18
         version: 18.3.1
       react-d3-tree:
-        specifier: ^3.6.3
-        version: 3.6.3(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
+        specifier: ^3.6.5
+        version: 3.6.5(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
       react-day-picker:
         specifier: 8.10.1
         version: 8.10.1(date-fns@2.28.0)(react@18.3.1)
@@ -465,11 +465,11 @@ packages:
     resolution: {integrity: sha512-t8kDRGrKXyp6+tjUh7hw2RLyclsW4TRoRvRHtSyAX9Bb5ldlFh+90YAYY6awRXrlB4G5G2izNeGySpATlFzmOg==}
     engines: {node: '>=6.9.0'}
 
-  '@bkrem/react-transition-group@1.3.3':
-    resolution: {integrity: sha512-nUZaumHu/MMolELv+MhEEQzQtKsnfpbKBHtam/NK53tGICwU19tuffEXW8BLhm9HhQfN1H3+C0bsJv8Z7vzwEA==}
+  '@bkrem/react-transition-group@1.3.5':
+    resolution: {integrity: sha512-lbBYhC42sxAeFEopxzd9oWdkkV0zirO5E9WyeOBxOrpXsf7m30Aj8vnbayZxFOwD9pvUQ2Pheb1gO79s0Qap3Q==}
     peerDependencies:
-      react: ^15.0.0 || ^16.0.0 || ^17.0.0 || ^18.0.0
-      react-dom: ^15.0.0 || ^16.0.0 || ^17.0.0 || ^18.0.0
+      react: ^15.0.0 || ^16.0.0 || ^17.0.0 || ^18.0.0 || ^19.0.0
+      react-dom: ^15.0.0 || ^16.0.0 || ^17.0.0 || ^18.0.0 || ^19.0.0
 
   '@dnd-kit/accessibility@3.1.1':
     resolution: {integrity: sha512-2P+YgaXF+gRsIihwwY1gCsQSYnu9Zyj2py8kY5fFvUM1qm2WA2u639R6YNVfU4GWr+ZM5mqEsfHZZLoRONbemw==}
@@ -3340,8 +3340,8 @@ packages:
   queue-microtask@1.2.3:
     resolution: {integrity: sha512-NuaNSa6flKT5JaSYQzJok04JzTL1CA6aGhv5rfLW3PgqA+M2ChpZQnAC8h8i4ZFkBS8X5RqkDBHA7r4hej3K9A==}
 
-  react-d3-tree@3.6.3:
-    resolution: {integrity: sha512-e6aaGbYsHADwoaqwFPL5/m4dY5DVbf1ViZQOPsdXvU+Tx7vltAtEixr621zEqsBHoNL92bylgEyACsO9UzJ1Kg==}
+  react-d3-tree@3.6.5:
+    resolution: {integrity: sha512-U/PH6hqgP8m6RvYmxqjqsXBeMowuSMfX4jE+uiBB4lM5CcdrnpR1V7U6h4xsOkPWxpoTqFFotsDnzvZ/D42YKg==}
     peerDependencies:
       react: 16.x || 17.x || 18.x || 19.x
       react-dom: 16.x || 17.x || 18.x || 19.x
@@ -4425,7 +4425,7 @@ snapshots:
       '@babel/helper-string-parser': 7.25.9
       '@babel/helper-validator-identifier': 7.25.9
 
-  '@bkrem/react-transition-group@1.3.3(react-dom@18.3.1(react@18.3.1))(react@18.3.1)':
+  '@bkrem/react-transition-group@1.3.5(react-dom@18.3.1(react@18.3.1))(react@18.3.1)':
     dependencies:
       chain-function: 1.0.1
       dom-helpers: 3.4.0
@@ -7608,9 +7608,9 @@ snapshots:
 
   queue-microtask@1.2.3: {}
 
-  react-d3-tree@3.6.3(react-dom@18.3.1(react@18.3.1))(react@18.3.1):
+  react-d3-tree@3.6.5(react-dom@18.3.1(react@18.3.1))(react@18.3.1):
     dependencies:
-      '@bkrem/react-transition-group': 1.3.3(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
+      '@bkrem/react-transition-group': 1.3.5(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
       clone: 2.1.2
       d3-hierarchy: 1.1.9
       d3-selection: 3.0.0
