@@ -1,0 +1,20 @@
+Nextauthを使用してます
+
+import { signOut, useSession } from "next-auth/react";
+
+<Tooltip title="Logout" arrow>
+                <CustomIconButton
+                  color="secondary"
+                  onClick={() => signOut()}
+                  style={{ marginLeft: "auto" }}
+                  edge="start"
+                >
+                  <ExitToAppIcon />
+                </CustomIconButton>
+              </Tooltip>
+            </div>
+
+サインアウトするとlocalhost:3000に遷移してしまう
+https://main.d2ixsz0upadm6k.amplifyapp.com/にいるはずなのに
+
+どこで設定してるんでしょうか

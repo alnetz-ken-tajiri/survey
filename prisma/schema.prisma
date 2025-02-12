@@ -1,0 +1,437 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+
+// -------------------------------------------------
+// ここからサーベイ関連のモデル
+// -------------------------------------------------
+
+model Survey {
+  id              String        @id @default(cuid())
+  image           String?       @db.Text //画像のURLを入れる、場合によってはbase64で入れる
+  name            String
+  questionGroupId String        @map("question_group_id")
+  createdAt       DateTime      @default(now()) @map("created_at")
+  status          SurveyStatus  @default(INACTIVE)
+  updatedAt       DateTime      @default(now()) @updatedAt @map("updated_at")
+  deletedAt       DateTime?     @map("deleted_at")
+
+  questionGroup   QuestionGroup @relation(fields: [questionGroupId], references: [id])
+  surveyTargets   SurveyTarget[]
+
+  @@map("surveys")
+}
+
+enum SurveyStatus {
+  ACTIVE
+  INACTIVE
+}
+
+model SurveyTarget {
+  id         String       @id @default(cuid())
+  surveyId   String       @map("survey_id")
+  userId     String       @map("user_id")
+  status     SurveyTargetStatus   @default(INACTIVE)
+  createdAt  DateTime     @default(now()) @map("created_at")
+  updatedAt  DateTime     @default(now()) @updatedAt @map("updated_at")
+  deletedAt  DateTime?    @map("deleted_at")
+
+  survey     Survey       @relation(fields: [surveyId], references: [id])
+  user       User         @relation(fields: [userId], references: [id])
+  responses  Response[]
+  mailNotifications MailNotification[]
+
+  @@index([surveyId], name: "idx_survey_target_survey_id")
+  @@index([userId], name: "idx_survey_target_user_id")
+  @@unique([surveyId, userId])
+  @@map("survey_targets")
+}
+
+enum SurveyTargetStatus {
+  ACTIVE
+  INACTIVE
+  NOT_STARTED
+  IN_PROGRESS
+  COMPLETED
+}
+
+model MailNotification {
+  id            String   @id @default(cuid())
+  surveyTargetId String  @map("survey_target_id") // 送信対象の SurveyTarget
+  sentAt        DateTime? // 実際に送信した時刻
+  status        MailNotificationStatus   @default(PENDING) // PENDING, SENT, CANCELLED など状態管理用
+  mailType      MailNotificationType   // "SURVEY_REMINDER" などメール種類を識別するキー
+  // テンプレ名や差し込み変数など追加してもOK
+
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @default(now()) @updatedAt @map("updated_at")
+
+  surveyTarget  SurveyTarget @relation(fields: [surveyTargetId], references: [id])
+}
+
+enum MailNotificationStatus {
+  PENDING
+  SENT
+  CANCELLED
+}
+
+enum MailNotificationType {
+  SURVEY_REMINDER
+}
+
+///
+/// 回答のヘッダ (1つのQuestionに対する回答 or ページ単位など設計次第)
+///
+model Response {
+  id            String         @id @default(cuid())
+  targetId      String         @map("target_id") // 回答先のユーザーID
+  questionId    String?        @map("question_id")
+  questionName  String         @map("question_name")  // 質問テキストをコピー
+  description   String?        @db.Text
+  createdAt     DateTime       @default(now()) @map("created_at")
+  updatedAt     DateTime       @default(now()) @updatedAt @map("updated_at")
+  deletedAt     DateTime?      @map("deleted_at")
+
+  surveyTarget  SurveyTarget   @relation(fields: [targetId], references: [id])
+  responseDetails ResponseDetail[]
+
+  @@index([targetId], name: "idx_response_target_id")
+  @@map("responses")
+}
+
+///
+/// 実際の回答内容はここで管理 (1対多)
+/// - 複数選択の場合、チェックしたオプション分レコードを作る
+/// - テキスト回答の場合、1つのレコードを作り textValue に内容を入れる
+/// - 単一選択の場合、1つだけ作って optionId か textValue を入れる
+///
+model ResponseDetail {
+  id             String         @id @default(cuid())
+  responseId     String         @map("response_id")
+  // 単一選択・複数選択用
+  questionOptionId String?      @map("question_option_id")
+  optionLabel     String?       // Option名のコピー
+  optionValue     String?       // Option値のコピー
+
+  // テキスト回答など
+  textValue      String?        @db.Text
+
+  createdAt      DateTime       @default(now()) @map("created_at")
+  updatedAt      DateTime       @default(now()) @updatedAt @map("updated_at")
+  deletedAt      DateTime?      @map("deleted_at")
+
+  // リレーション
+  response       Response       @relation(fields: [responseId], references: [id])
+  questionOption QuestionOption? @relation(fields: [questionOptionId], references: [id])
+
+  @@map("response_details")
+}
+
+model QuestionGroup {
+  id                      String                    @id @default(cuid())
+  name                    String
+  description             String?                   @db.Text
+  fileUrl                 String?                   @db.Text
+  createdAt               DateTime                  @default(now()) @map("created_at")
+  updatedAt               DateTime                  @default(now()) @updatedAt @map("updated_at")
+  deletedAt               DateTime?                 @map("deleted_at")
+
+  questionGroupQuestions  QuestionGroupQuestions[]
+  surveys                 Survey[]
+
+  @@map("question_groups")
+}
+
+model QuestionGroupQuestions {
+  questionGroupId String @map("question_group_id")
+  questionId      String @map("question_id")
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @default(now()) @updatedAt @map("updated_at")
+  deletedAt       DateTime? @map("deleted_at")
+
+  questionGroup   QuestionGroup @relation(fields: [questionGroupId], references: [id])
+  question        Question      @relation(fields: [questionId], references: [id])
+
+  @@id([questionGroupId, questionId])
+  @@map("question_group_questions")
+}
+
+model Question {
+  id          String          @id @default(cuid())
+  name        String
+  description String?         @db.Text
+  order       Int             @default(autoincrement())
+  type        QuestionType
+  createdAt   DateTime        @default(now()) @map("created_at")
+  updatedAt   DateTime        @default(now()) @updatedAt @map("updated_at")
+  deletedAt   DateTime?       @map("deleted_at")
+
+  questionGroupQuestions QuestionGroupQuestions[]
+  questionOptions        QuestionOption[]
+
+  @@map("questions")
+}
+
+model QuestionOption {
+  id         String   @id @default(cuid())
+  questionId String   @map("question_id")
+  name       String   // 表示ラベル
+  value      String   // サーバに送信・保存される値
+
+  question   Question @relation(fields: [questionId], references: [id])
+  responseDetails ResponseDetail[]
+
+  @@map("question_options")
+}
+
+enum QuestionType {
+  TEXT
+  RADIO
+  CHECKBOX
+  SELECT
+  FILE
+  CALENDAR
+  // 必要に応じて増やす
+}
+
+// -------------------------------------------------
+// ここから既存のUserやEmployee等はそのまま
+// -------------------------------------------------
+
+
+
+model Connection {
+  id           String      @id @default(cuid())
+  employeeId   String      @unique @map("employee_id")
+  connectionId String      @unique
+  createdAt    DateTime    @default(now()) @map("created_at")
+  deletedAt    DateTime?   @default(now()) @updatedAt @map("deleted_at")
+
+  employee Employee @relation(fields: [employeeId], references: [id])
+
+  @@index([employeeId], name: "idx_connection_employee_id")
+  @@map("connections")
+}
+
+model Message {
+  id              String             @id @default(cuid()) @map("id")
+  employeeId      String             @map("employee_id")
+  recipientId     String             @map("recipient_id")
+  content         String             @db.Text
+  createdAt       DateTime           @default(now()) @map("created_at")
+  updatedAt       DateTime           @default(now()) @updatedAt @map("updated_at")
+  deletedAt       DateTime?          @default(now()) @updatedAt @map("deleted_at")
+  readAt          DateTime?          @map("read_at")
+  importanceLevel ImportanceLevel    @map("importance_level")
+
+  employee  Employee @relation(name: "Sender", fields: [employeeId], references: [id])
+  recipient Employee @relation(name: "Recipient", fields: [recipientId], references: [id])
+
+  @@index([employeeId], name: "idx_employee_id")
+  @@index([createdAt], name: "idx_created_at")
+  @@index([recipientId], name: "idx_recipient_id")
+  @@map("messages")
+}
+
+model Notification {
+  id              String             @id @default(cuid()) @map("id")
+  employeeId      String             @map("employee_id")
+  title           String             @map("title")
+  message         String             @db.Text
+  createdAt       DateTime           @default(now()) @map("created_at")
+  readAt          DateTime?          @map("read_at")
+  deletedAt       DateTime?          @default(now()) @updatedAt @map("deleted_at")
+  importanceLevel ImportanceLevel    @map("importance_level")
+
+  employee Employee @relation(name: "EmployeeNotification", fields: [employeeId], references: [id])
+
+  @@index([employeeId], name: "idx_notification_employee_id")
+  @@index([createdAt], name: "idx_notification_created_at")
+  @@map("notifications")
+}
+
+enum ImportanceLevel {
+  Low
+  Medium
+  High
+}
+
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String?
+  access_token      String?
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String?
+  session_state     String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+  @@map("accounts")
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("sessions")
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+  @@map("verification_tokens")
+}
+
+model User {
+  id        String   @id @default(cuid())
+  loginId   String   @unique @map("login_id")
+  email     String   @unique @map("email")
+  avatar    String? @map("avatar")
+  password  String?
+  role      UserRole?   @default(USER) @map("role")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @default(now()) @updatedAt @map("updated_at")
+  deletedAt DateTime? @map("deleted_at")
+
+  // NextAuth 用リレーション
+  accounts  Account[]
+  sessions  Session[]
+
+  employee  Employee?
+
+  surveyTargets SurveyTarget[]
+
+  @@map("users")
+}
+
+enum UserRole {
+  USER // ユーザー
+  SUPER_USER // スーパーユーザー 現状未使用 2025/02/09
+  ADMIN // 管理者
+  USER_ADMIN // ユーザー兼管理者
+}
+
+model Employee {
+  id             String         @id @default(cuid()) @map("id")
+  name           String
+  userId         String?        @unique @map("user_id")
+  number         String         @unique
+  createdAt      DateTime       @default(now()) @map("created_at")
+  updatedAt      DateTime       @default(now()) @updatedAt @map("updated_at")
+  deletedAt      DateTime?      @map("deleted_at")
+
+  companyId      String         @map("company_id")
+  company        Company        @relation(fields: [companyId], references: [id])
+
+  organizationId String?           @map("organization_id")
+  organization   Organization?   @relation(fields: [organizationId], references: [id])
+  leadOrganizations Organization[] @relation("EmployeeOrganizations")
+
+  Notification   Notification[] @relation("EmployeeNotification")
+  messages       Message[]      @relation("Recipient")
+  sentMessages   Message[]      @relation("Sender")
+  connections    Connection[]
+  user           User?          @relation(fields: [userId], references: [id])
+  files          File[]
+
+  @@map("employees")
+}
+
+model Company {
+  id          String     @id @default(cuid()) @map("id")
+  companyName String     @map("company_name")
+  companyCode String     @unique
+  createdAt   DateTime   @default(now()) @map("created_at")
+  updatedAt   DateTime   @default(now()) @updatedAt @map("updated_at")
+  deletedAt   DateTime?  @map("deleted_at")
+
+  employees   Employee[]
+  organizations Organization[]
+  organizationRelationships OrganizationRelationship[]
+
+  @@map("companies")
+}
+
+model Organization {
+  id        String        @id @default(cuid()) @map("id")
+  companyId String        @map("company_id")
+  name      String     @map("name")
+  leaderId  String?       @map("leader_id")
+  leader    Employee?  @relation("EmployeeOrganizations", fields: [leaderId], references: [id])
+  employees Employee[]
+  company   Company    @relation(fields: [companyId], references: [id]) // 修正
+  deletedAt DateTime? @map("deleted_at")
+
+  ancestorRelationships   OrganizationRelationship[] @relation("Ancestor")
+  descendantRelationships OrganizationRelationship[] @relation("Descendant")
+
+  @@index([companyId], name: "idx_organization_company_id")
+  @@map("organizations")
+}
+
+model OrganizationRelationship {
+  id           String          @id @default(cuid()) @map("id")
+  ancestorId   String          @map("ancestor_id")
+  descendantId String          @map("descendant_id")
+  companyId    String?         @map("company_id")
+  depth        Int
+  ancestor     Organization @relation("Ancestor", fields: [ancestorId], references: [id])
+  descendant   Organization @relation("Descendant", fields: [descendantId], references: [id])
+  deletedAt    DateTime?    @map("deleted_at")
+  company      Company?     @relation(fields: [companyId], references: [id]) // 修正
+
+  @@unique([ancestorId, descendantId])
+  @@index([companyId], name: "idx_organization_relationship_company_id")
+  @@map("organization_relationships")
+}
+
+
+model File {
+  id         String   @id @default(cuid()) @map("id")
+  employeeId String   @map("employee_id")
+  fileName   String   @map("file_name")
+  type       FileType @map("type")
+  createdAt  DateTime @default(now()) @map("created_at")
+  updatedAt  DateTime @default(now()) @updatedAt @map("updated_at")
+  deletedAt  DateTime? @map("deleted_at")
+
+  employee   Employee @relation(fields: [employeeId], references: [id])
+  
+
+  @@unique([employeeId, fileName])
+  @@map("files")
+}
+
+enum FileType {
+  PROFILE
+  CERTIFICATE
+  OTHER
+}
+
+
