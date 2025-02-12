@@ -39,8 +39,13 @@ export async function GET(request: NextRequest, { params }: { params: { id: stri
         },
       },
     })
-    
-    return NextResponse.json(survey)
+    const surveyTargets = survey?.surveyTargets
+    const questionGroup = survey?.questionGroup
+    const questionGroupQuestions = questionGroup?.questionGroupQuestions
+    const question = questionGroupQuestions?.map((question: any) => question.question)
+    const questionOptions = question?.map((question: any) => question?.questionOptions)
+    return NextResponse.json({ surveyTargets, questionGroup, questionGroupQuestions, question, questionOptions })
+
 
 
   } catch (error) {

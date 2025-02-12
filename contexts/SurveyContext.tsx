@@ -4,7 +4,6 @@ import React, { createContext, useContext } from "react"
 import { useForm, type UseFormReturn } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import * as z from "zod"
-import { mockQuestions } from "@/lib/mockData"
 import type { Question, QuestionOption } from "@/lib/api"
 import { useSwrData } from "@/hooks/useSwrData"
 import { useSession } from "next-auth/react"
@@ -91,7 +90,7 @@ const useSurveyLogic = (questionGroupId: string): SurveyContextType => {
   
 
   const questions: Question[] = React.useMemo(() => {
-    if (!apiResponse) return mockQuestions
+    if (!apiResponse) return []
     return apiResponse.questionGroupQuestions.map(({ question }) => convertAPIQuestionToQuestion(question))
   }, [apiResponse])
 
