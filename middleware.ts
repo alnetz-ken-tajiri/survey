@@ -38,6 +38,6 @@ export default withAuth(
 )
 
 export const config = {
-  matcher: ["/((?!auth|admin/generatePassword|api/admin/generatePassword).*)", "/admin/:path*", "/user/:path*"],
+  matcher: ["/((?!auth).*)", "/admin/:path*", "/user/:path*"],
 }
 

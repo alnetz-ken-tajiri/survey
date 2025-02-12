@@ -22,9 +22,11 @@ export const authOptions: AuthOptions = {
         password: { label: "Password", type: "password" },
       },
       async authorize(credentials) : Promise<User | null> {
-        if (!credentials?.email || !credentials?.password) {
-          throw new Error("メールアドレスとパスワードを入力してください")
-        }
+
+        try {
+          if (!credentials?.email || !credentials?.password) {
+            throw new Error("メールアドレスとパスワードを入力してください")
+          }
 
         const user = await prisma.user.findUnique({
           where: { email: credentials.email },
@@ -32,11 +34,13 @@ export const authOptions: AuthOptions = {
 
         // If no user or no password, return null.
         if (!user || !user.password) {
+          console.log("ユーザーが見つかりません")
           return null
         }
 
         const isValid = await bcrypt.compare(credentials.password, user.password)
         if (!isValid) {
+          console.log("パスワードが間違っています")
           return null
         }
 
@@ -47,6 +51,10 @@ export const authOptions: AuthOptions = {
           role: user.role,
           image : user.avatar,
         }
+      } catch (error) {
+        console.error("認証エラー:", error)
+        return null
+      }
       },
     }),
   ],
