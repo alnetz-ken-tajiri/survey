@@ -1,54 +1,53 @@
-import { withAuth } from "next-auth/middleware"
-import { NextResponse } from "next/server"
+import { type NextRequest, NextResponse } from "next/server"
+import { PrismaClient } from "@prisma/client"
+import bcrypt from "bcrypt"
 
-export default withAuth(
-  function middleware(req) {
-    const token = req.nextauth.token
-    const path = req.nextUrl.pathname
+const prisma = new PrismaClient()
 
-    // /initialize へのアクセス処理
-    if (path === "/initialize") {
-      return NextResponse.next()
-    }
+export async function POST(req: NextRequest) {
+  try {
+    const { user, employee, company } = await req.json()
 
-    // ルートパスへのアクセスをロールに基づいてリダイレクト
-    if (path === "/") {
-      if (["ADMIN", "SUPER_USER", "USER_ADMIN"].includes(token?.role as string)) {
-        return NextResponse.redirect(new URL("/admin", req.url))
-      } else if (token?.role === "USER") {
-        return NextResponse.redirect(new URL("/user", req.url))
-      }
-    }
+    // パスワードのハッシュ化
+    const hashedPassword = await bcrypt.hash(user.password, 10)
 
-    // 管理者ルートの保護
-    if (path.startsWith("/admin") && !["ADMIN", "SUPER_USER", "USER_ADMIN"].includes(token?.role as string)) {
-      return NextResponse.redirect(new URL("/user", req.url))
-    }
+    // トランザクションでデータを一括投入
+    const result = await prisma.$transaction(async (tx) => {
+      // 会社の作成
+      const createdCompany = await tx.company.create({
+        data: {
+          companyName: company.companyName,
+          companyCode: company.companyCode,
+        },
+      })
 
-    // ユーザールートの保護
-    if (path.startsWith("/user") && !["USER", "SUPER_USER", "USER_ADMIN", "ADMIN"].includes(token?.role as string)) {
-      return NextResponse.redirect(new URL("/auth/signin", req.url))
-    }
+      // ユーザーの作成
+      const createdUser = await tx.user.create({
+        data: {
+          loginId: user.loginId,
+          email: user.email,
+          password: hashedPassword,
+          role: user.role,
+        },
+      })
 
-    return NextResponse.next()
-  },
-  {
-    callbacks: {
-      authorized: ({ token, req }) => {
-        const path = req.nextUrl.pathname
-        if (path === "/initialize") {
-          return true
-        }
-        return !!token
-      },
-    },
-    pages: {
-      signIn: "/auth/signin",
-    },
-  },
-)
+      // 従業員の作成
+      const createdEmployee = await tx.employee.create({
+        data: {
+          name: employee.name,
+          number: employee.number,
+          userId: createdUser.id,
+          companyId: createdCompany.id,
+        },
+      })
 
-export const config = {
-  matcher: ["/", "/admin/:path*", "/user/:path*", "/initialize"],
+      return { user: createdUser, employee: createdEmployee, company: createdCompany }
+    })
+
+    return NextResponse.json({ message: "初期データの設定が完了しました", data: result })
+  } catch (error) {
+    console.error("初期化エラー:", error)
+    return NextResponse.json({ error: "初期データの設定に失敗しました" }, { status: 500 })
+  }
 }
 
