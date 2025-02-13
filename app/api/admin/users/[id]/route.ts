@@ -138,3 +138,26 @@ export async function PUT(request: Request, { params }: { params: { id: string }
   }
 }
 
+export async function DELETE(request: Request, { params }: { params: { id: string } }) {
+  try {
+    const session = await getServerSession(authOptions)
+    if (!session) {
+      return NextResponse.json({ error: "ログインしてください" }, { status: 401 })  
+    }
+
+    const user = await prisma.user.update({
+      where: { id: params.id },
+      data: {
+        deletedAt: new Date(),
+        employee: {
+          delete: true,
+        },
+      },
+    })
+
+    return NextResponse.json({ message: "ユーザーが削除されました" }, { status: 200 })
+  } catch (error) {
+    console.error("ユーザーの削除中にエラーが発生しました:", error)
+    return NextResponse.json({ error: "サーバーエラーが発生しました" }, { status: 500 })
+  }
+}
