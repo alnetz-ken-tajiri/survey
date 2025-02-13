@@ -38,6 +38,7 @@ export async function POST(request: NextRequest) {
       data: targetUserIds.map((userId) => ({
         surveyId: survey.id,
         userId: userId,
+        status: "ACTIVE",
       })),
     })
 

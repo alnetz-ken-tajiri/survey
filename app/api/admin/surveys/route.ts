@@ -63,6 +63,7 @@ export async function POST(request: NextRequest) {
         questionGroupId: questionGroup.id,
         name,
         image: uploadedImageUrl,
+        status: "ACTIVE",
       },
     })
 

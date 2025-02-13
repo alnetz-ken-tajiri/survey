@@ -21,6 +21,7 @@ export async function GET(request: Request, { params }: { params: { id: string }
         },
       },
     })
+    console.log("thisUser", thisUser)
     if (!thisUser) {
       return NextResponse.json({ error: "ユーザーが見つかりません" }, { status: 404 })
     }
