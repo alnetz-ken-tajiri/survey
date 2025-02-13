@@ -20,18 +20,18 @@ export default function UserLayout({
           <Link href="/user" className="text-2xl font-bold text-gray-900 hover:text-gray-700 transition-colors">
             HuCups サーベイ
           </Link>
-          <nav className="space-x-4">
-            <Link href="/user/profile" className="text-gray-600 hover:text-gray-900">
-              プロフィール
+          <nav className="space-x-2">
+            <Link href="/user/profile" passHref>
+              <Button variant="ghost">プロフィール</Button>
             </Link>
-            <Link href="/user/surveys" className="text-gray-600 hover:text-gray-900">
-              サーベイ一覧
+            <Link href="/user/surveys" passHref>
+              <Button variant="ghost">サーベイ一覧</Button>
             </Link>
-            {session?.user?.role === "ADMIN" && (
+            {(session?.user?.role === "ADMIN" ||
+              session?.user?.role === "SUPER_USER" ||
+              session?.user?.role === "USER_ADMIN") && (
               <Link href="/admin" passHref>
-                <Button variant="outline" className="text-gray-600 hover:text-gray-900">
-                  管理画面
-                </Button>
+                <Button variant="outline">管理画面</Button>
               </Link>
             )}
             <LogoutButton />
