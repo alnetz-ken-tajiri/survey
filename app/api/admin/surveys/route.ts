@@ -64,6 +64,7 @@ export async function POST(request: NextRequest) {
         name,
         image: uploadedImageUrl,
         status: "ACTIVE",
+        companyId,
       },
     })
 
@@ -88,7 +89,11 @@ export async function POST(request: NextRequest) {
  */
 export async function GET() {
   try {
+    const companyId = await getCompanyId()
     const surveys = await prisma.survey.findMany({
+      where: {
+        companyId,
+      },
       include: {
         questionGroup: {
           select: {

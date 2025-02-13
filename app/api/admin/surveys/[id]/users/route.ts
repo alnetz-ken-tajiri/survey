@@ -1,19 +1,26 @@
 import { type NextRequest, NextResponse } from "next/server"
 import prisma from "@/lib/prisma"
-
+import { getCompanyId } from "@/lib/getCompanyId"
+  
 export async function GET(request: NextRequest, { params }: { params: { id: string } }) {
   try {
     const surveyId = params.id
-
+    const companyId = await getCompanyId()
     const users = await prisma.surveyTarget.findMany({
       where: {
         surveyId: surveyId,
+        user: {
+          employee: {
+            companyId: companyId,
+          },
+        },
       },
       include: {
         user: {
           include: {
             employee: true,
           },
+          
         },
         mailNotifications: {
           orderBy: {

@@ -20,6 +20,7 @@ datasource db {
 
 model Survey {
   id              String        @id @default(cuid())
+  companyId       String?       @map("company_id")
   image           String?       @db.Text //画像のURLを入れる、場合によってはbase64で入れる
   name            String
   questionGroupId String        @map("question_group_id")
@@ -30,7 +31,7 @@ model Survey {
 
   questionGroup   QuestionGroup @relation(fields: [questionGroupId], references: [id])
   surveyTargets   SurveyTarget[]
-
+  company         Company?      @relation(fields: [companyId], references: [id])
   @@map("surveys")
 }
 
@@ -141,6 +142,7 @@ model ResponseDetail {
 
 model QuestionGroup {
   id                      String                    @id @default(cuid())
+  companyId               String?                   @map("company_id")
   name                    String
   description             String?                   @db.Text
   fileUrl                 String?                   @db.Text
@@ -150,6 +152,7 @@ model QuestionGroup {
 
   questionGroupQuestions  QuestionGroupQuestions[]
   surveys                 Survey[]
+  company                 Company?                    @relation(fields: [companyId], references: [id])
 
   @@map("question_groups")
 }
@@ -374,7 +377,9 @@ model Company {
   employees   Employee[]
   organizations Organization[]
   organizationRelationships OrganizationRelationship[]
-
+  surveys Survey[]
+  questionGroups QuestionGroup[]
+  
   @@map("companies")
 }
 

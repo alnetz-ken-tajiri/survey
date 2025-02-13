@@ -51,6 +51,7 @@ export async function POST(request: Request) {
         name,
         description,
         fileUrl: uploadedFileUrl, // S3アップロード後のURLを保存
+        companyId,
         questionGroupQuestions: {
           create: questionGroupQuestions.map((item: any) => ({
             question: {
@@ -93,8 +94,10 @@ export async function POST(request: Request) {
  */
 export async function GET() {
   try {
+    const companyId = await getCompanyId()
     const questionGroups = await prisma.questionGroup.findMany({
       where: {
+        companyId,
         deletedAt: null,
       },
       include: {
