@@ -23,6 +23,7 @@ interface APIQuestion {
 }
 
 interface APIResponse {
+  surveyId: string
   id: string
   name: string
   description: string | null
@@ -45,6 +46,7 @@ interface SurveyContextType {
   surveyData: APIResponse | null
   userData: User | null
   isLoadingUser: boolean
+  surveyId: string
 }
 
 function convertAPIQuestionToQuestion(apiQuestion: APIQuestion): Question {
@@ -76,7 +78,7 @@ function mapQuestionType(apiType: string): Question["type"] {
 }
 
 // カスタムフック: ロジックを集約
-const useSurveyLogic = (questionGroupId: string): SurveyContextType => {
+const useSurveyLogic = (surveyId: string): SurveyContextType => {
   const { data: session } = useSession()
   const userId = session?.user?.id
   const { data: userData = null, isLoading: isLoadingUser } = useSwrData<User>(
@@ -85,7 +87,7 @@ const useSurveyLogic = (questionGroupId: string): SurveyContextType => {
   const [currentQuestionIndex, setCurrentQuestionIndex] = React.useState(0)
   const [isQuestionAnswered, setIsQuestionAnswered] = React.useState<boolean[]>([])
   const { data: apiResponse = null, isLoading: isLoadingApiResponse } = useSwrData<APIResponse>(
-    `/api/admin/questionGroups/${questionGroupId}`,
+    `/api/user/surveys/${surveyId}/questionGroups`,
   )
   
 
@@ -157,6 +159,7 @@ const useSurveyLogic = (questionGroupId: string): SurveyContextType => {
     surveyData: apiResponse,
     userData,
     isLoadingUser,
+    surveyId,
   }
 }
 

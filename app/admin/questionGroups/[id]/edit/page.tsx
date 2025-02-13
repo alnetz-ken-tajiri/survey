@@ -6,16 +6,15 @@ import { zodResolver } from "@hookform/resolvers/zod"
 import * as z from "zod"
 import axios from "axios"
 import { useRouter } from "next/navigation"
+import { Accordion } from "@/components/ui/accordion"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form"
-import { toast } from "@/hooks/use-toast"
-import { Accordion } from "@/components/ui/accordion"
+import { useToast } from "@/hooks/use-toast"
 import { Plus } from "lucide-react"
 import QuestionItem from "../../create/QuestionItem"
 import ImageUpload from "../../create/ImageUpload"
-
 
 // 質問タイプの定義
 const QuestionType = {
@@ -35,9 +34,9 @@ const questionOptionSchema = z.object({
 const questionSchema = z.object({
   id: z.string().optional(),
   name: z.string().min(1, "質問名は必須です"),
-  description: z.string().optional(),
+  description: z.string().nullable().optional(),
   type: z.enum([QuestionType.TEXT, QuestionType.RADIO, QuestionType.CHECKBOX, QuestionType.SELECT, QuestionType.FILE]),
-  options: z.array(questionOptionSchema).optional(),
+  questionOptions: z.array(questionOptionSchema).optional(),
 })
 
 const questionGroupSchema = z.object({
@@ -45,11 +44,13 @@ const questionGroupSchema = z.object({
   name: z.string().min(1, "質問セット名は必須です"),
   description: z.string().optional(),
   fileUrl: z.string().optional(),
-  questionGroupQuestions: z.array(
-    z.object({
-      question: questionSchema,
-    }),
-  ),
+  questionGroupQuestions: z
+    .array(
+      z.object({
+        question: questionSchema,
+      }),
+    )
+    .min(1, "少なくとも1つの質問が必要です"),
 })
 
 type QuestionGroupFormValues = z.infer<typeof questionGroupSchema>
@@ -58,6 +59,7 @@ export default function EditQuestionGroup({ params }: { params: { id: string } }
   const [expandedQuestions, setExpandedQuestions] = useState<string[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const router = useRouter()
+  const { toast } = useToast()
 
   const form = useForm<QuestionGroupFormValues>({
     resolver: zodResolver(questionGroupSchema),
@@ -68,24 +70,25 @@ export default function EditQuestionGroup({ params }: { params: { id: string } }
       fileUrl: "",
       questionGroupQuestions: [],
     },
+    mode: "onChange",
   })
 
   useEffect(() => {
     const fetchQuestionGroup = async () => {
       try {
         const response = await axios.get(`/api/admin/questionGroups/${params.id}`)
+        console.log("Fetched data:", response.data)
         const formattedData = {
           ...response.data,
           questionGroupQuestions: response.data.questionGroupQuestions.map((item: any) => ({
-
             question: {
               ...item.question,
-              options: item.question.questionOptions,
+              description: item.question.description ?? undefined,
+              questionOptions: item.question.questionOptions || [],
             },
           })),
         }
         form.reset(formattedData)
-        // Update expanded questions based on questionGroupQuestions
         setExpandedQuestions(formattedData.questionGroupQuestions.map((_: any, index: number) => `question-${index}`))
       } catch (error) {
         console.error("Error fetching question group:", error)
@@ -100,28 +103,80 @@ export default function EditQuestionGroup({ params }: { params: { id: string } }
     }
 
     fetchQuestionGroup()
-  }, [params.id, form])
+  }, [params.id, form, toast])
+
+  // フォームの状態を監視
+  useEffect(() => {
+    const subscription = form.watch((value, { name, type }) => {
+      console.log("Form value changed:", name, value)
+      console.log("Form is valid:", form.formState.isValid)
+      console.log("Form errors:", form.formState.errors)
+    })
+    return () => subscription.unsubscribe()
+  }, [form])
+
+  const renderErrors = (errors: any, parentKey = "") => {
+    return Object.entries(errors).map(([key, error]: [string, any]) => {
+      const fullKey = parentKey ? `${parentKey}.${key}` : key
+      if (error && typeof error === "object" && error.type) {
+        return (
+          <li key={fullKey}>
+            {fullKey}: {error.message}
+          </li>
+        )
+      } else if (error && typeof error === "object") {
+        return (
+          <li key={fullKey}>
+            {fullKey}
+            <ul>{renderErrors(error, fullKey)}</ul>
+          </li>
+        )
+      }
+      return null
+    })
+  }
+
+  const removeQuestion = (indexToRemove: number) => {
+    form.setValue(
+      "questionGroupQuestions",
+      form.getValues("questionGroupQuestions").filter((_, index) => index !== indexToRemove),
+    )
+    setExpandedQuestions(expandedQuestions.filter((id) => id !== `question-${indexToRemove}`))
+  }
 
   const onSubmit = async (data: QuestionGroupFormValues) => {
+    console.log("onSubmit called with data:", data)
     try {
-      await axios.put(`/api/admin/questionGroups/${params.id}`, data)
+      // データを整形
+      const formattedData = {
+        ...data,
+        questionGroupQuestions: data.questionGroupQuestions.map(({ question }) => ({
+          question: {
+            ...question,
+            description: question.description ?? undefined,
+            questionOptions: question.questionOptions?.filter((option) => option.name && option.value) || [],
+          },
+        })),
+      }
+      console.log("Formatted data:", formattedData)
+
+      const response = await axios.put(`/api/admin/questionGroups/${params.id}`, formattedData)
+      console.log("API response:", response.data)
       toast({
         title: "質問セットが更新されました",
         description: "質問セットが正常に保存されました。",
-
       })
       router.push("/admin/questionGroups")
     } catch (error) {
       console.error("Error updating question group:", error)
       toast({
-
         title: "エラーが発生しました",
         description: "質問セットの更新中にエラーが発生しました。",
         variant: "destructive",
       })
     }
   }
-  
+
   if (isLoading) {
     return (
       <div className="container mx-auto py-10 flex justify-center items-center h-screen">
@@ -129,7 +184,6 @@ export default function EditQuestionGroup({ params }: { params: { id: string } }
       </div>
     )
   }
-
 
   return (
     <div className="container mx-auto py-10">
@@ -188,15 +242,13 @@ export default function EditQuestionGroup({ params }: { params: { id: string } }
                   key={index}
                   questionIndex={index}
                   form={form}
-                  removeQuestion={() =>
-                    form.setValue(
-                      "questionGroupQuestions",
-                      form.getValues("questionGroupQuestions").filter((_, i) => i !== index),
-                    )
-                  }
+                  removeQuestion={() => removeQuestion(index)}
                   expandedQuestions={expandedQuestions}
                   setExpandedQuestions={setExpandedQuestions}
-                  question={item.question}
+                  question={{
+                    ...item.question,
+                    description: item.question.description ?? undefined,
+                  }}
                 />
               ))}
             </Accordion>
@@ -218,7 +270,23 @@ export default function EditQuestionGroup({ params }: { params: { id: string } }
             </Button>
           </div>
 
-          <Button type="submit">質問セットを更新</Button>
+          {Object.keys(form.formState.errors).length > 0 && (
+            <div className="text-red-500">
+              <p>フォームにエラーがあります：</p>
+              <ul>{renderErrors(form.formState.errors)}</ul>
+            </div>
+          )}
+
+          <Button
+            type="submit"
+            onClick={() => {
+              console.log("Submit button clicked")
+              console.log("Form is valid:", form.formState.isValid)
+              console.log("Form errors:", form.formState.errors)
+            }}
+          >
+            質問セットを更新
+          </Button>
         </form>
       </Form>
     </div>

@@ -37,6 +37,7 @@ export function SurveyForm() {
     questions,
     isLoadingApiResponse,
     surveyData,
+    surveyId,
   } = useSurvey()
 
   const onSubmit = async (data: any) => {
@@ -45,6 +46,9 @@ export function SurveyForm() {
 
       // FormDataオブジェクトを作成
       const formData = new FormData()
+
+      //TODO突貫で追加
+      formData.append("surveyId", surveyId)
 
       // QuestionGroupIdを取得
       const questionGroupId = surveyData?.id
@@ -60,9 +64,6 @@ export function SurveyForm() {
           answer: Array.isArray(answer) ? answer : [answer],
         })),
       }
-
-      console.log("Formatted questionGroup", questionGroup)
-
       // FormDataにQuestionGroupオブジェクトを追加
       formData.append("questionGroup", JSON.stringify(questionGroup))
 

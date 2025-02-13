@@ -86,7 +86,7 @@ export function SurveyListCard() {
                 <TableCell>
                   {canAnswer(target.survey.status, target.status) ? (
                     <Button asChild>
-                      <Link href={`/survey/${target.survey.questionGroupId}`}>回答する</Link>
+                      <Link href={`/survey/${target.survey.id}`}>回答する</Link>
                     </Button>
                   ) : (
                     <Button disabled>回答不可</Button>

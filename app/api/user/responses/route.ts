@@ -53,8 +53,25 @@ export async function POST(request: NextRequest) {
         { status: 401 }
       );
     }
+    const surveyId = formData.get("surveyId") as string;
+    if (!surveyId) {
+      return NextResponse.json(
+        { message: "surveyId が送信されていません" },
+        { status: 400 }
+      );
+    }
     const target = await prisma.surveyTarget.findFirst({
-      where: { userId: session.user?.id },
+      where: { surveyId: surveyId, userId: session.user?.id },
+      include: { 
+        survey: { 
+          include: { 
+            questionGroup: true
+          },
+          
+        },
+        
+      },
+
     });
     if (!target) {
       return NextResponse.json(
@@ -152,6 +169,12 @@ export async function POST(request: NextRequest) {
         // 質問ID は使わなくてもよいですが、ファイル回答なので ResponseDetail.questionOptionId は null にする
         await handleFileUpload(responseRecord.id, fileEntry);
       });
+
+    await prisma.surveyTarget.update({
+      where: { id: targetId },
+      data: { status: "COMPLETED" },
+    })
+
     await Promise.all(fileUploadPromises);
 
     return NextResponse.json(
