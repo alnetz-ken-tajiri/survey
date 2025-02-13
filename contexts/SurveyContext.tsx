@@ -1,6 +1,6 @@
 "use client"
 
-import React, { createContext, useContext } from "react"
+import React, { createContext, useContext, useState } from "react"
 import { useForm, type UseFormReturn } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import * as z from "zod"
@@ -47,6 +47,8 @@ interface SurveyContextType {
   userData: User | null
   isLoadingUser: boolean
   surveyId: string
+  headerColor: string
+  setHeaderColor: React.Dispatch<React.SetStateAction<string>>
 }
 
 function convertAPIQuestionToQuestion(apiQuestion: APIQuestion): Question {
@@ -89,7 +91,7 @@ const useSurveyLogic = (surveyId: string): SurveyContextType => {
   const { data: apiResponse = null, isLoading: isLoadingApiResponse } = useSwrData<APIResponse>(
     `/api/user/surveys/${surveyId}/questionGroups`,
   )
-  
+  const [headerColor, setHeaderColor] = useState("from-blue-500 to-purple-500")
 
   const questions: Question[] = React.useMemo(() => {
     if (!apiResponse) return []
@@ -160,6 +162,8 @@ const useSurveyLogic = (surveyId: string): SurveyContextType => {
     userData,
     isLoadingUser,
     surveyId,
+    headerColor,
+    setHeaderColor,
   }
 }
 

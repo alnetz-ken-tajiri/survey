@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useMemo } from "react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import {
@@ -17,6 +17,21 @@ import { motion, AnimatePresence } from "framer-motion"
 import cn from "classnames"
 import { useSurvey } from "@/contexts/SurveyContext"
 import axios from "axios"
+
+const COLOR_MAP: { [key: string]: { bg: string; text: string } } = {
+  "from-blue-500": { bg: "bg-blue-500 hover:bg-blue-600", text: "text-blue-600" },
+  "from-green-500": { bg: "bg-green-500 hover:bg-green-600", text: "text-green-600" },
+  "from-red-500": { bg: "bg-red-500 hover:bg-red-600", text: "text-red-600" },
+  "from-yellow-500": { bg: "bg-yellow-500 hover:bg-yellow-600", text: "text-yellow-600" },
+  "from-indigo-500": { bg: "bg-indigo-500 hover:bg-indigo-600", text: "text-indigo-600" },
+  "from-gray-800": { bg: "bg-gray-800 hover:bg-gray-900", text: "text-gray-800" },
+}
+
+const getButtonColor = (headerColor: string) => {
+  const [color] = headerColor.split(" ")
+  return COLOR_MAP[color] || { bg: "bg-blue-500 hover:bg-blue-600", text: "text-blue-600" }
+}
+
 const questionComponents = {
   TEXT: TextQuestion,
   RADIO: RadioQuestion,
@@ -38,25 +53,21 @@ export function SurveyForm() {
     isLoadingApiResponse,
     surveyData,
     surveyId,
+    headerColor,
   } = useSurvey()
+
+  const buttonColor = useMemo(() => getButtonColor(headerColor), [headerColor])
 
   const onSubmit = async (data: any) => {
     try {
-      console.log("Original data", data)
-
-      // FormDataオブジェクトを作成
       const formData = new FormData()
-
-      //TODO突貫で追加
       formData.append("surveyId", surveyId)
 
-      // QuestionGroupIdを取得
       const questionGroupId = surveyData?.id
       if (!questionGroupId) {
         throw new Error("QuestionGroupId is missing")
       }
 
-      // QuestionGroup オブジェクトを作成
       const questionGroup = {
         id: questionGroupId,
         questions: Object.entries(data).map(([questionId, answer]) => ({
@@ -64,28 +75,23 @@ export function SurveyForm() {
           answer: Array.isArray(answer) ? answer : [answer],
         })),
       }
-      // FormDataにQuestionGroupオブジェクトを追加
       formData.append("questionGroup", JSON.stringify(questionGroup))
 
-      // ファイルの処理
       Object.entries(data).forEach(([questionId, value]) => {
         if (value instanceof FileList) {
-          Array.from(value).forEach((file, index) => {
+          Array.from(value).forEach((file) => {
             formData.append(`files.${questionId}`, file)
           })
         }
       })
 
-      // axiosでFormDataを送信
       const response = await axios.post(process.env.NEXT_PUBLIC_API_URL + "/api/user/responses", formData, {
         headers: {
           "Content-Type": "multipart/form-data",
         },
       })
 
-      console.log("response", response)
       setLoading(true)
-
       await new Promise((resolve) => setTimeout(resolve, 1000))
       toast({
         title: "送信完了",
@@ -122,18 +128,18 @@ export function SurveyForm() {
 
   if (isLoadingApiResponse) {
     return (
-      <div className="container mx-auto py-10 flex justify-center items-center h-screen">
+      <div className="flex justify-center items-center h-[400px]">
         <div className="animate-spin rounded-full h-32 w-32 border-t-2 border-b-2 border-gray-900"></div>
       </div>
     )
   }
 
   return (
-    <Card className="w-full max-w-2xl mx-auto question-container">
-      <CardHeader className="bg-gradient-to-r from-indigo-600 to-purple-400 text-white rounded-t-lg">
-        <CardTitle className="text-xl font-bold">サーベイ回答フォーム</CardTitle>
-        <CardDescription className="text-indigo-100">以下の質問にお答えください。</CardDescription>
-        <div className="flex flex-wrap gap-2 mt-2">
+    <Card className="w-full">
+      <CardHeader className={`space-y-2 bg-gradient-to-r ${headerColor} text-white rounded-t-lg p-6`}>
+        <CardTitle className="text-2xl font-bold">サーベイ回答フォーム</CardTitle>
+        <CardDescription className="text-lg text-blue-100">以下の質問にお答えください。</CardDescription>
+        <div className="flex flex-wrap gap-2 mt-4">
           {questions.map((q, index) => (
             <Button
               key={q.id}
@@ -141,9 +147,9 @@ export function SurveyForm() {
               size="sm"
               onClick={() => setCurrentQuestionIndex(index)}
               className={cn(
-                "text-xs",
-                currentQuestionIndex === index ? "bg-indigo-100 text-indigo-800" : "",
-                isQuestionAnswered[index] ? "text-indigo-600" : "text-gray-500",
+                "text-xs font-medium",
+                currentQuestionIndex === index ? `bg-white ${buttonColor.text}` : `${buttonColor.bg} text-white`,
+                isQuestionAnswered[index] && "ring-2 ring-white",
               )}
             >
               {index + 1}
@@ -151,8 +157,8 @@ export function SurveyForm() {
           ))}
         </div>
       </CardHeader>
-      <CardContent className="p-6 question-container">
-        <form className="space-y-8">
+      <CardContent className="pt-6">
+        <form className="space-y-6">
           <AnimatePresence mode="wait">
             <motion.div
               key={currentQuestion.id}
@@ -161,26 +167,25 @@ export function SurveyForm() {
               exit={{ opacity: 0, x: -50 }}
               transition={{ duration: 0.3 }}
             >
-              <Card className="question-container">
-                <CardHeader className="p-4">
-                  <CardTitle className="question-title text-sm">{`Q${currentQuestionIndex + 1}. ${currentQuestion.text}`}</CardTitle>
-                </CardHeader>
-                <CardContent className="p-4">
+              <div className="rounded-lg border bg-card text-card-foreground shadow-sm">
+                <div className="p-6">
+                  <h3 className="text-lg font-semibold mb-4">{`Q${currentQuestionIndex + 1}. ${currentQuestion.text}`}</h3>
                   <QuestionComponent
                     question={currentQuestion.text}
                     id={currentQuestion.id}
                     options={currentQuestion.options}
                   />
-                </CardContent>
-              </Card>
+                </div>
+              </div>
             </motion.div>
           </AnimatePresence>
-          <div className="flex justify-between items-center mt-4">
+          <div className="flex justify-between items-center mt-6">
             <Button
               type="button"
               onClick={goToPreviousQuestion}
               disabled={currentQuestionIndex === 0}
-              className="bg-indigo-500 hover:bg-indigo-600 text-white"
+              variant="outline"
+              className={cn(buttonColor.bg, "text-white")}
             >
               <ChevronLeft className="mr-2 h-4 w-4" />
               前の質問
@@ -188,9 +193,9 @@ export function SurveyForm() {
             {isLastQuestion ? (
               <Button
                 type="button"
-                onClick={() => form.handleSubmit(onSubmit)()} //手動送信しないとバグる
+                onClick={() => form.handleSubmit(onSubmit)()}
                 disabled={loading || !form.formState.isValid}
-                className="bg-indigo-500 hover:bg-indigo-600 text-white"
+                className={cn(buttonColor.bg, "text-white")}
               >
                 {loading ? (
                   <>
@@ -206,7 +211,7 @@ export function SurveyForm() {
                 type="button"
                 onClick={goToNextQuestion}
                 disabled={!isQuestionAnswered[currentQuestionIndex]}
-                className="bg-indigo-500 hover:bg-indigo-600 text-white"
+                className={cn(buttonColor.bg, "text-white")}
               >
                 次の質問
                 <ChevronRight className="ml-2 h-4 w-4" />
