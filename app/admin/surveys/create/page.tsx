@@ -13,6 +13,11 @@ import { Input } from "@/components/ui/input"
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Calendar } from "@/components/ui/calendar"
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
+import { CalendarIcon } from "lucide-react"
+import { format } from "date-fns"
+import { cn } from "@/lib/utils"
 import ImageUpload from "./ImageUpload"
 
 interface QuestionGroup {
@@ -22,12 +27,23 @@ interface QuestionGroup {
   image: string
 }
 
-const formSchema = z.object({
-  name: z.string().min(1, "サーベイ名は必須です"),
-  questionGroupId: z.string().min(1, "質問グループを選択してください"),
-  status: z.enum(["ACTIVE", "INACTIVE"]),
-  image: z.string().optional(),
-})
+const formSchema = z
+  .object({
+    name: z.string().min(1, "サーベイ名は必須です"),
+    questionGroupId: z.string().min(1, "質問グループを選択してください"),
+    status: z.enum(["ACTIVE", "INACTIVE"]),
+    image: z.string().optional(),
+    startDate: z.date({
+      required_error: "開始日を選択してください",
+    }),
+    deadline: z.date({
+      required_error: "締切日を選択してください",
+    }),
+  })
+  .refine((data) => data.startDate < data.deadline, {
+    message: "開始日は締切日より前である必要があります",
+    path: ["deadline"],
+  })
 
 export default function CreateSurveyPage() {
   const router = useRouter()
@@ -52,6 +68,8 @@ export default function CreateSurveyPage() {
       const response = await axios.post("/api/admin/surveys", {
         ...values,
         image: values.image || null,
+        startDate: values.startDate.toISOString(),
+        deadline: values.deadline.toISOString(),
       })
       toast({
         title: "サーベイが作成されました",
@@ -143,12 +161,74 @@ export default function CreateSurveyPage() {
               />
               <FormField
                 control={form.control}
+                name="startDate"
+                render={({ field }) => (
+                  <FormItem className="flex flex-col">
+                    <FormLabel>開始日</FormLabel>
+                    <Popover>
+                      <PopoverTrigger asChild>
+                        <FormControl>
+                          <Button
+                            variant={"outline"}
+                            className={cn(
+                              "w-[240px] pl-3 text-left font-normal",
+                              !field.value && "text-muted-foreground",
+                            )}
+                          >
+                            {field.value ? format(field.value, "yyyy年MM月dd日") : <span>開始日を選択</span>}
+                            <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
+                          </Button>
+                        </FormControl>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-auto p-0" align="start">
+                        <Calendar mode="single" selected={field.value} onSelect={field.onChange} initialFocus />
+                      </PopoverContent>
+                    </Popover>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="deadline"
+                render={({ field }) => (
+                  <FormItem className="flex flex-col">
+                    <FormLabel>締切日</FormLabel>
+                    <Popover>
+                      <PopoverTrigger asChild>
+                        <FormControl>
+                          <Button
+                            variant={"outline"}
+                            className={cn(
+                              "w-[240px] pl-3 text-left font-normal",
+                              !field.value && "text-muted-foreground",
+                            )}
+                          >
+                            {field.value ? format(field.value, "yyyy年MM月dd日") : <span>締切日を選択</span>}
+                            <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
+                          </Button>
+                        </FormControl>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-auto p-0" align="start">
+                        <Calendar mode="single" selected={field.value} onSelect={field.onChange} initialFocus />
+                      </PopoverContent>
+                    </Popover>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
                 name="image"
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>サーベイ画像</FormLabel>
                     <FormControl>
-                      <ImageUpload value={field.value || ""} onChange={field.onChange} onRemove={() => field.onChange("")} />
+                      <ImageUpload
+                        value={field.value || ""}
+                        onChange={field.onChange}
+                        onRemove={() => field.onChange("")}
+                      />
                     </FormControl>
                     <FormMessage />
                   </FormItem>

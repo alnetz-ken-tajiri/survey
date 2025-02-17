@@ -23,6 +23,8 @@ model Survey {
   companyId       String?       @map("company_id")
   image           String?       @db.Text //画像のURLを入れる、場合によってはbase64で入れる
   name            String
+  startDate       DateTime?     @map("start_date")
+  deadline        DateTime?       @map("deadline_date")
   questionGroupId String        @map("question_group_id")
   createdAt       DateTime      @default(now()) @map("created_at")
   status          SurveyStatus  @default(INACTIVE)
@@ -32,6 +34,7 @@ model Survey {
   questionGroup   QuestionGroup @relation(fields: [questionGroupId], references: [id])
   surveyTargets   SurveyTarget[]
   company         Company?      @relation(fields: [companyId], references: [id])
+  emailTemplates EmailTemplate[]
   @@map("surveys")
 }
 
@@ -90,6 +93,22 @@ enum MailNotificationStatus {
 
 enum MailNotificationType {
   SURVEY_REMINDER
+}
+
+model EmailTemplate {
+  id          String   @id @default(cuid())
+  surveyId    String
+  survey      Survey   @relation(fields: [surveyId], references: [id])
+  name        String   // テンプレート名
+  subject     String   // メール件名
+  content     String   // メール本文（HTML可）
+  isDefault   Boolean  @default(false)
+  variables   String[]
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  deletedAt   DateTime? @map("deleted_at")
+
+  @@index([surveyId])
 }
 
 ///

@@ -10,6 +10,7 @@ import { Input } from "@/components/ui/input"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Badge } from "@/components/ui/badge"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 
 interface User {
   id: string
@@ -23,32 +24,41 @@ interface User {
   responseStatus: "COMPLETED" | "NOT_ANSWERED"
 }
 
-/**
- * メール送信ページ
- * URL: /admin/surveys/[id]/sendMail
- * @returns 
- */
+interface EmailTemplate {
+  id: string
+  name: string
+  subject: string
+  content: string
+  variables: string[] // 変更: string[] 型に修正
+}
+
 export default function SendEmailPage() {
   const params = useParams()
   const router = useRouter()
   const { toast } = useToast()
   const [users, setUsers] = useState<User[]>([])
   const [selectedUsers, setSelectedUsers] = useState<string[]>([])
+  const [templates, setTemplates] = useState<EmailTemplate[]>([])
+  const [selectedTemplate, setSelectedTemplate] = useState<string>("")
 
   const [searchTerm, setSearchTerm] = useState("")
   const [isLoading, setIsLoading] = useState(true)
   const [isSending, setIsSending] = useState(false)
 
   useEffect(() => {
-    const fetchUsers = async () => {
+    const fetchData = async () => {
       try {
-        const response = await axios.get(`/api/admin/surveys/${params.id}/users`)
-        setUsers(response.data)
+        const [usersResponse, templatesResponse] = await Promise.all([
+          axios.get(`/api/admin/surveys/${params.id}/users`),
+          axios.get(`/api/admin/surveys/${params.id}/emailTemplate`),
+        ])
+        setUsers(usersResponse.data)
+        setTemplates(templatesResponse.data)
       } catch (error) {
-        console.error("Error fetching users:", error)
+        console.error("Error fetching data:", error)
         toast({
           title: "エラーが発生しました",
-          description: "ユーザーの取得中にエラーが発生しました。",
+          description: "データの取得中にエラーが発生しました。",
           variant: "destructive",
         })
       } finally {
@@ -56,7 +66,7 @@ export default function SendEmailPage() {
       }
     }
 
-    fetchUsers()
+    fetchData()
   }, [params.id, toast])
 
   const filteredUsers = users.filter(
@@ -80,12 +90,22 @@ export default function SendEmailPage() {
   }
 
   const handleSendEmails = async () => {
+    if (!selectedTemplate) {
+      toast({
+        title: "テンプレートを選択してください",
+        description: "メール送信にはテンプレートの選択が必要です。",
+        variant: "destructive",
+      })
+      return
+    }
+
     setIsSending(true)
     try {
       const response = await axios.post("/api/admin/mailNotifications", {
         surveyId: params.id,
         allSelected: false,
         selectedUserIds: selectedUsers,
+        templateId: selectedTemplate,
       })
       toast({
         title: "メール送信完了",
@@ -111,7 +131,6 @@ export default function SendEmailPage() {
       case "PENDING":
         return <Badge variant="default">送信中</Badge>
       case "CANCELLED":
-
         return <Badge variant="destructive">キャンセル</Badge>
       case "NOT_SENT":
         return <Badge variant="secondary">未送信</Badge>
@@ -124,7 +143,6 @@ export default function SendEmailPage() {
         return <Badge variant="default">回答済み</Badge>
       case "NOT_ANSWERED":
         return <Badge variant="secondary">未回答</Badge>
-
     }
   }
 
@@ -146,6 +164,18 @@ export default function SendEmailPage() {
               onChange={(e) => setSearchTerm(e.target.value)}
               className="max-w-sm"
             />
+            <Select value={selectedTemplate} onValueChange={setSelectedTemplate}>
+              <SelectTrigger className="w-[200px]">
+                <SelectValue placeholder="テンプレートを選択" />
+              </SelectTrigger>
+              <SelectContent>
+                {templates.map((template) => (
+                  <SelectItem key={template.id} value={template.id}>
+                    {template.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
             <Button onClick={handleSelectAll}>
               {selectedUsers.length === filteredUsers.length ? "全選択解除" : "全選択"}
             </Button>
@@ -182,7 +212,7 @@ export default function SendEmailPage() {
             </TableBody>
           </Table>
           <div className="mt-4">
-            <Button onClick={handleSendEmails} disabled={isSending || selectedUsers.length === 0}>
+            <Button onClick={handleSendEmails} disabled={isSending || selectedUsers.length === 0 || !selectedTemplate}>
               {isSending ? "送信中..." : "メール送信"}
             </Button>
           </div>

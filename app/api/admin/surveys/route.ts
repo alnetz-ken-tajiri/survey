@@ -20,12 +20,22 @@ export async function POST(request: NextRequest) {
   }
 
   try {
-    const { questionGroupId, name, image } = await request.json()
+    const { questionGroupId, name, image, startDate, deadline } = await request.json()
     const companyId = await getCompanyId()
 
     // バリデーション
-    if (!questionGroupId || !name || !image) {
+    if (!questionGroupId || !name || !image || !startDate || !deadline) {
       return NextResponse.json({ error: "必須フィールドが不足しています" }, { status: 400 })
+    }
+
+    // 日付のバリデーション
+    const startDateObj = new Date(startDate)
+    const deadlineObj = new Date(deadline)
+    if (isNaN(startDateObj.getTime()) || isNaN(deadlineObj.getTime())) {
+      return NextResponse.json({ error: "無効な日付形式です" }, { status: 400 })
+    }
+    if (startDateObj >= deadlineObj) {
+      return NextResponse.json({ error: "開始日は締切日より前である必要があります" }, { status: 400 })
     }
 
     // 質問グループの存在確認
@@ -65,6 +75,8 @@ export async function POST(request: NextRequest) {
         image: uploadedImageUrl,
         status: "ACTIVE",
         companyId,
+        startDate: startDateObj,
+        deadline: deadlineObj,
       },
     })
 
@@ -73,7 +85,7 @@ export async function POST(request: NextRequest) {
         message: "サーベイが正常に作成されました",
         surveyId: survey.id,
       },
-      { status: 201 }
+      { status: 201 },
     )
   } catch (error) {
     console.error("サーベイの作成中にエラーが発生しました:", error)
@@ -113,3 +125,4 @@ export async function GET() {
     return NextResponse.json({ error: "Internal Server Error" }, { status: 500 })
   }
 }
+

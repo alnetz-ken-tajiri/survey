@@ -7,6 +7,8 @@ import { useToast } from "@/hooks/use-toast"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
+import { MoreHorizontal } from "lucide-react"
 
 interface Survey {
   id: string
@@ -72,18 +74,25 @@ export default function SurveyListPage() {
                   <TableCell>{survey.questionGroup.name}</TableCell>
                   <TableCell>{new Date(survey.createdAt).toLocaleDateString()}</TableCell>
                   <TableCell>
-                    <div className="flex space-x-2">
-                      <Link href={`/admin/surveys/${survey.id}/sendMail`}>
-                        <Button variant="outline" size="sm">
-                          メール送信
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button variant="ghost" className="h-8 w-8 p-0">
+                          <span className="sr-only">アクションを開く</span>
+                          <MoreHorizontal className="h-4 w-4" />
                         </Button>
-                      </Link>
-                      <Link href={`/admin/surveys/${survey.id}/targets`}>
-                        <Button variant="outline" size="sm">
-                          対象者選択
-                        </Button>
-                      </Link>
-                    </div>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end">
+                        <DropdownMenuItem asChild>
+                          <Link href={`/admin/surveys/${survey.id}/sendMail`}>メール送信</Link>
+                        </DropdownMenuItem>
+                        <DropdownMenuItem asChild>
+                          <Link href={`/admin/surveys/${survey.id}/targets`}>対象者選択</Link>
+                        </DropdownMenuItem>
+                        <DropdownMenuItem asChild>
+                          <Link href={`/admin/surveys/${survey.id}/mailTemplates`}>メールテンプレート作成</Link>
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
                   </TableCell>
                 </TableRow>
               ))}
