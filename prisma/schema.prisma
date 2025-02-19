@@ -251,7 +251,7 @@ enum QuestionType {
 
 model Connection {
     id        String    @id @default(cuid())
-    userId    String    @unique @map("user_id")
+    userId    String    @map("user_id")
     createdAt DateTime  @default(now()) @map("created_at")
     deletedAt DateTime? @default(now()) @updatedAt @map("deleted_at")
 
