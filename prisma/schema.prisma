@@ -287,7 +287,7 @@ model Message {
 
 model Notification {
   id              String             @id @default(cuid()) @map("id")
-  employeeId      String             @map("employee_id")
+  userId      String             @map("user_id")
   title           String             @map("title")
   message         String             @db.Text
   createdAt       DateTime           @default(now()) @map("created_at")
@@ -295,9 +295,9 @@ model Notification {
   deletedAt       DateTime?          @default(now()) @updatedAt @map("deleted_at")
   importanceLevel ImportanceLevel    @map("importance_level")
 
-  employee Employee @relation(name: "EmployeeNotification", fields: [employeeId], references: [id])
+  user User @relation(fields: [userId], references: [id])
 
-  @@index([employeeId], name: "idx_notification_employee_id")
+  @@index([userId], name: "idx_notification_user_id")
   @@index([createdAt], name: "idx_notification_created_at")
   @@map("notifications")
 }
@@ -364,7 +364,7 @@ model User {
   sessions  Session[]
 
   employee  Employee?
-
+  notifications Notification[]
   surveyTargets SurveyTarget[]
 
   @@map("users")
@@ -393,7 +393,6 @@ model Employee {
   organization   Organization?   @relation(fields: [organizationId], references: [id])
   leadOrganizations Organization[] @relation("EmployeeOrganizations")
 
-  Notification   Notification[] @relation("EmployeeNotification")
   messages       Message[]      @relation("Recipient")
   sentMessages   Message[]      @relation("Sender")
   connections    Connection[]
