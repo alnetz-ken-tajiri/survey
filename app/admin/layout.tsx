@@ -24,6 +24,9 @@ export default function AdminLayout({
           <Link href="/admin/surveys" className="block py-2 px-4 hover:bg-gray-700">
             サーベイ管理
           </Link>
+          <Link href="/admin/questions" className="block py-2 px-4 hover:bg-gray-700">
+            質問管理
+          </Link>
           <Link href="/admin/questionGroups" className="block py-2 px-4 hover:bg-gray-700">
             質問グループ管理
           </Link>
