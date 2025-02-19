@@ -108,6 +108,12 @@ export interface TreeNode {
   attributes?: {
     leader?: string
   }
+  organizationDetail?: {
+    address?: string
+    phone?: string
+    email?: string
+    website?: string
+  }
   children?: TreeNode[]
 }
 
@@ -125,6 +131,14 @@ export function buildTree(
       attributes: {
         leader: org.leader?.name,
       },
+      organizationDetail: org.organizationDetail
+      ? {
+          address: org.organizationDetail.address ?? undefined,
+          phone: org.organizationDetail.phone ?? undefined,
+          email: org.organizationDetail.email ?? undefined,
+          website: org.organizationDetail.website ?? undefined,
+        }
+      : undefined,
       children: [],
     })
   })

@@ -4,7 +4,7 @@ import type { TreeResponse } from "@/app/api/admin/organizations/tree/route"
 import { useSwrData } from "@/hooks/useSwrData"
 
 type Organization = Prisma.OrganizationGetPayload<{
-  include: { leader: true }
+  include: { leader: true; organizationDetail: true }
 }>
 
 type UpdateFormState = {
@@ -22,6 +22,8 @@ export const useOrganization = () => {
     isValidating,
     mutate: mutateOrganizations,
   } = useSwrData<TreeResponse>("/api/admin/organizations/tree")
+  console.log(organizations)
+  
 
   const [organization, setOrganization] = useState<Organization | undefined>(undefined)
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null)

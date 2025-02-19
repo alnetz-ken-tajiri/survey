@@ -194,6 +194,8 @@ model Question {
   id          String          @id @default(cuid())
   name        String
   description String?         @db.Text
+  companyId   String?         @map("company_id")
+  public      Boolean         @default(false)
   order       Int             @default(autoincrement())
   type        QuestionType
   createdAt   DateTime        @default(now()) @map("created_at")
@@ -202,9 +204,25 @@ model Question {
 
   questionGroupQuestions QuestionGroupQuestions[]
   questionOptions        QuestionOption[]
+  company                Company?              @relation(fields: [companyId], references: [id])
+
+  // 多対多リレーション: Question <-> Tag
+  tags        Tag[]            @relation("QuestionTags")
 
   @@map("questions")
 }
+
+//中間テーブルは自動生成
+model Tag {
+  id          String      @id @default(cuid())
+  name        String      @unique   // タグ名が重複しないようにユニーク制約推奨
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @default(now()) @updatedAt
+
+  // Questionとの多対多
+  questions   Question[]  @relation("QuestionTags")
+}
+
 
 model QuestionOption {
   id         String   @id @default(cuid())
@@ -398,9 +416,40 @@ model Company {
   organizationRelationships OrganizationRelationship[]
   surveys Survey[]
   questionGroups QuestionGroup[]
-  
+  questions Question[]
+  companyDetail CompanyDetail?
   @@map("companies")
 }
+
+model CompanyDetail {
+  id String @id @default(cuid()) @map("id")
+  companyId String @map("company_id")
+  address String? @map("address")
+  phone String? @map("phone")
+  email String? @map("email")
+  website String? @map("website")
+  corporateNumber String? @map("corporate_number")
+  establishedDate DateTime? @map("established_date")
+  representativeName String? @map("representative_name")
+  businessDescription String? @map("business_description")
+  numberOfEmployees Int? @map("number_of_employees")
+  capital Decimal? @map("capital")
+  fiscalYearEnd Int? @map("fiscal_year_end") // 1-12の数字で表現
+  industry String? @map("industry")
+  logoUrl String? @map("logo_url")
+  linkedinUrl String? @map("linkedin_url")
+  twitterUrl String? @map("twitter_url")
+  facebookUrl String? @map("facebook_url")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @default(now()) @updatedAt @map("updated_at")
+  deletedAt DateTime? @map("deleted_at")
+  company Company @relation(fields: [companyId], references: [id])
+
+  @@unique([companyId])
+  @@map("company_details")
+}
+
+
 
 model Organization {
   id        String        @id @default(cuid()) @map("id")
@@ -414,9 +463,25 @@ model Organization {
 
   ancestorRelationships   OrganizationRelationship[] @relation("Ancestor")
   descendantRelationships OrganizationRelationship[] @relation("Descendant")
-
+  organizationDetail OrganizationDetail?
+  
   @@index([companyId], name: "idx_organization_company_id")
   @@map("organizations")
+}
+model OrganizationDetail {
+  id String @id @default(cuid()) @map("id")
+  organizationId String @map("organization_id")
+  address String? @map("address")
+  phone String? @map("phone")
+  email String? @map("email")
+  website String? @map("website")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @default(now()) @updatedAt @map("updated_at")
+  deletedAt DateTime? @map("deleted_at")
+  organization Organization @relation(fields: [organizationId], references: [id])
+
+  @@unique([organizationId])
+  @@map("organization_details")
 }
 
 model OrganizationRelationship {

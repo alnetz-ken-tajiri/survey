@@ -432,6 +432,7 @@ export async function fetchOrganizations() {
     where: { companyId: companyId },
     include: {
       leader: true, // 首長の情報を含める場合
+      organizationDetail: true,
     },
   });
 

@@ -4,7 +4,10 @@ import { Prisma } from "@prisma/client";
 
 
 type Organization = Prisma.OrganizationGetPayload<{
-    include: { leader: true };
+    include: { 
+        leader: true,
+        organizationDetail: true
+    };
 }>;
 
 type OrganizationRelationship = Prisma.OrganizationRelationshipGetPayload<{}>;

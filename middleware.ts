@@ -5,9 +5,18 @@ export default withAuth(
   function middleware(req) {
     const token = req.nextauth.token
     const path = req.nextUrl.pathname
+    
 
     // /initialize へのアクセス処理
     if (path === "/initialize") {
+      return NextResponse.next()
+    }
+
+    const superuserSession = req.cookies.get("superuser_session")
+    if (path === "/superuser/login") {
+      if (superuserSession) {
+        return NextResponse.redirect(new URL("/superuser", req.url))
+      }
       return NextResponse.next()
     }
 
