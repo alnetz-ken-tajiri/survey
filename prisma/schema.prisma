@@ -299,9 +299,9 @@ model Notification {
 }
 
 enum ImportanceLevel {
-    Low
-    Medium
-    High
+    LOW
+    MEDIUM
+    HIGH
 }
 
 model Account {
