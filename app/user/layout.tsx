@@ -1,7 +1,7 @@
 // app/user/layout.tsx
 "use client"
 
-import React from "react"
+import React, { useEffect, useState } from "react"
 import { useSession } from "next-auth/react"
 import { LogoutButton } from "@/components/header"
 import Link from "next/link"
@@ -14,8 +14,15 @@ export default function UserLayout({
 }: {
   children: React.ReactNode
 }) {
-  const { data: session } = useSession()
-  const { notifications } = useWebSocket(`wss://8yg0beud0h.execute-api.ap-northeast-1.amazonaws.com/dev?userId=${session?.user?.id}`);
+  const { data: session, status } = useSession()
+  const [wsUrl, setWsUrl] = useState<string | null>(null)
+  const { notifications } = useWebSocket(wsUrl || '')
+
+  useEffect(() => {
+    if (status === 'authenticated' && session?.user?.id) {
+      setWsUrl(`wss://8yg0beud0h.execute-api.ap-northeast-1.amazonaws.com/dev?userId=${session.user.id}`)
+    }
+  }, [status, session])
 
   return (
     <div className="min-h-screen bg-gray-100">
@@ -25,7 +32,7 @@ export default function UserLayout({
             HuCups サーベイ
           </Link>
           <nav className="space-x-2 flex items-center">
-            <NotificationPopover notifications={notifications} />
+            {wsUrl && <NotificationPopover notifications={notifications} />}
             <Link href="/user/profile" passHref>
               <Button variant="ghost">プロフィール</Button>
             </Link>
