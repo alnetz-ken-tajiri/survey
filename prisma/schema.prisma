@@ -6,6 +6,7 @@
 
 generator client {
     provider = "prisma-client-js"
+    binaryTargets = ["native", "rhel-openssl-3.0.x"]
 }
 
 datasource db {
@@ -283,9 +284,10 @@ model Message {
 
 model Notification {
     id              String          @id @default(cuid()) @map("id")
-    userId          String          @map("user_id")
+    userId          String          @map("user_id") // 通知を受け取るユーザーのID
     title           String          @map("title")
     message         String          @db.Text
+    createdBy       String          @map("created_by") // 通知を作成したユーザーのID
     createdAt       DateTime        @default(now()) @map("created_at")
     readAt          DateTime?       @map("read_at")
     deletedAt       DateTime?       @default(now()) @updatedAt @map("deleted_at")
