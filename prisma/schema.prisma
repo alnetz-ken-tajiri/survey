@@ -285,6 +285,7 @@ model Message {
 model Notification {
     id              String          @id @default(cuid()) @map("id")
     userId          String          @map("user_id") // 通知を受け取るユーザーのID
+    companyId       String?          @map("company_id") // 参照用　
     title           String          @map("title")
     message         String          @db.Text
     createdBy       String          @map("created_by") // 通知を作成したユーザーのID
@@ -294,6 +295,7 @@ model Notification {
     importanceLevel ImportanceLevel @map("importance_level")
 
     user User @relation(fields: [userId], references: [id])
+    company Company? @relation(fields: [companyId], references: [id])
 
     @@index([userId], name: "idx_notification_user_id")
     @@index([createdAt], name: "idx_notification_created_at")
@@ -415,6 +417,7 @@ model Company {
     questionGroups            QuestionGroup[]
     questions                 Question[]
     companyDetail             CompanyDetail?
+    notifications             Notification[]
 
     @@map("companies")
 }
