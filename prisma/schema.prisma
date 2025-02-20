@@ -254,7 +254,7 @@ model Connection {
     id        String    @id @default(cuid())
     userId    String    @map("user_id")
     createdAt DateTime  @default(now()) @map("created_at")
-    deletedAt DateTime? @default(now()) @updatedAt @map("deleted_at")
+    deletedAt DateTime? @map("deleted_at")
 
     user User @relation(fields: [userId], references: [id])
 
@@ -269,7 +269,7 @@ model Message {
     content         String          @db.Text
     createdAt       DateTime        @default(now()) @map("created_at")
     updatedAt       DateTime        @default(now()) @updatedAt @map("updated_at")
-    deletedAt       DateTime?       @default(now()) @updatedAt @map("deleted_at")
+    deletedAt DateTime? @map("deleted_at")
     readAt          DateTime?       @map("read_at")
     importanceLevel ImportanceLevel @map("importance_level")
 
@@ -291,7 +291,7 @@ model Notification {
     createdBy       String          @map("created_by") // 通知を作成したユーザーのID
     createdAt       DateTime        @default(now()) @map("created_at")
     readAt          DateTime?       @map("read_at")
-    deletedAt       DateTime?       @default(now()) @updatedAt @map("deleted_at")
+    deletedAt DateTime? @map("deleted_at")
     importanceLevel ImportanceLevel @map("importance_level")
 
     user User @relation(fields: [userId], references: [id])
