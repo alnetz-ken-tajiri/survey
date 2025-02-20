@@ -33,9 +33,13 @@ export default function AdminLayout({
           <Link href="/admin/organizations" className="block py-2 px-4 hover:bg-gray-700">
             組織管理
           </Link>
+          <Link href="/admin/notifications" className="block py-2 px-4 hover:bg-gray-700">
+            通知管理
+          </Link>
           <Link href="/user" className="block py-2 px-4 hover:bg-gray-700 bg-black">
             ユーザーページ
           </Link>
+
         </nav>
 
 
