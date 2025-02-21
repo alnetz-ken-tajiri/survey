@@ -61,9 +61,24 @@ export async function POST(request: NextRequest) {
       const file = new File([arrayBuffer], fileName, { type: response.headers.get("Content-Type") || "image/jpeg" })
       uploadedImageUrl = await uploadFileToS3(file, companyId, "survey-image")
     } else {
-      // バイナリデータの場合（デコードを想定）
-      const fileName = `${Date.now()}-image.jpg`
-      const file = new File([Buffer.from(image, "base64")], fileName, { type: "image/jpeg" })
+      // バイナリデータの場合（Data URL形式に対応）
+      let base64Data = image
+      let mimeType = "image/jpeg" // デフォルト
+
+      if (base64Data.startsWith("data:")) {
+        // Data URLの形式: data:[<MIME-type>];base64,<data>
+        const matches = base64Data.match(/^data:(image\/\w+);base64,(.*)$/)
+        if (matches) {
+          mimeType = matches[1]
+          base64Data = matches[2]
+        } else {
+          return NextResponse.json({ error: "無効な画像データです" }, { status: 400 })
+        }
+      }
+
+      const extension = mimeType.split("/")[1]
+      const fileName = `${Date.now()}-image.${extension}`
+      const file = new File([Buffer.from(base64Data, "base64")], fileName, { type: mimeType })
       uploadedImageUrl = await uploadFileToS3(file, companyId, "survey-image")
     }
 
@@ -125,4 +140,3 @@ export async function GET() {
     return NextResponse.json({ error: "Internal Server Error" }, { status: 500 })
   }
 }
-

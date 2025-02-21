@@ -1,55 +1,58 @@
-// components/NotificationPopover.tsx
-import React from 'react';
-import { Bell } from 'lucide-react';
-import { Button } from "@/components/ui/button";
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
+import { Bell, Loader2 } from "lucide-react"
+import { Button } from "@/components/ui/button"
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
+import { ScrollArea } from "@/components/ui/scroll-area"
 
 interface Notification {
-  id: string;
-  title: string;
-  message: string;
-  createdAt: string;
+  id: string
+  title: string
+  message: string
+  createdAt: string
 }
 
 interface NotificationPopoverProps {
-  notifications: Notification[];
+  notifications: Notification[]
+  isLoading?: boolean
 }
 
-export function NotificationPopover({ notifications }: NotificationPopoverProps) {
+export function NotificationPopover({ notifications, isLoading = false }: NotificationPopoverProps) {
   return (
     <Popover>
       <PopoverTrigger asChild>
-        <Button variant="outline" size="icon">
+        <Button variant="outline" size="icon" className="relative">
           <Bell className="h-4 w-4" />
-          {notifications.length > 0 && (
-            <span className="absolute top-0 right-0 inline-flex items-center justify-center px-2 py-1 text-xs font-bold leading-none text-red-100 transform translate-x-1/2 -translate-y-1/2 bg-red-600 rounded-full">
+          {!isLoading && notifications.length > 0 && (
+            <span className="absolute -top-1 -right-1 h-4 w-4 flex items-center justify-center text-[10px] font-bold text-white bg-red-600 rounded-full">
               {notifications.length}
             </span>
           )}
         </Button>
       </PopoverTrigger>
       <PopoverContent className="w-80">
-        <div className="grid gap-4">
-          <h4 className="font-medium leading-none">通知</h4>
-          {notifications.length === 0 ? (
-            <p>新しい通知はありません</p>
+        <h4 className="font-medium leading-none mb-4">通知</h4>
+        <ScrollArea className="h-[300px] overflow-y-auto">
+          {isLoading ? (
+            <div className="flex items-center justify-center h-20">
+              <Loader2 className="h-6 w-6 animate-spin" />
+            </div>
+          ) : notifications.length === 0 ? (
+            <p className="text-center text-muted-foreground">新しい通知はありません</p>
           ) : (
-            notifications.map((notification) => (
-              <div key={notification.id} className="grid gap-1">
-                <h5 className="font-medium">{notification.title}</h5>
-                <p className="text-sm">{notification.message}</p>
-                <p className="text-xs text-gray-500">
-                  {new Date(notification.createdAt).toLocaleString()}
-                </p>
-              </div>
-            ))
+            <div className="space-y-4">
+              {notifications.map((notification) => (
+                <div key={notification.id} className="border-b pb-2 last:border-b-0">
+                  <h5 className="font-medium">{notification.title}</h5>
+                  <p className="text-sm">{notification.message}</p>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    {new Date(notification.createdAt).toLocaleString()}
+                  </p>
+                </div>
+              ))}
+            </div>
           )}
-        </div>
+        </ScrollArea>
       </PopoverContent>
     </Popover>
-  );
+  )
 }
+

@@ -4,13 +4,15 @@ import { useState, useEffect, useCallback } from 'react';
 export function useWebSocket(url: string) {
   const [socket, setSocket] = useState<WebSocket | null>(null);
   const [notifications, setNotifications] = useState<any[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
 
   const connect = useCallback(() => {
+    if (!url) return;
+    
     const ws = new WebSocket(url);
 
     ws.onopen = () => {
       console.log('WebSocket connected');
-      // 接続後に通知を取得するアクションを送信
       ws.send(JSON.stringify({ action: 'fetchNotifications' }));
     };
 
@@ -18,25 +20,29 @@ export function useWebSocket(url: string) {
       const data = JSON.parse(event.data);
       if (data.type === 'NOTIFY') {
         setNotifications(data.data);
+        setIsLoading(false);
       }
     };
 
     ws.onclose = () => {
       console.log('WebSocket disconnected');
-      setTimeout(connect, 3000);
+      setIsLoading(true);  // 接続が切れたらローディング状態に戻す
+      setTimeout(() => connect(), 3000);
     };
 
     setSocket(ws);
   }, [url]);
 
   useEffect(() => {
-    connect();
+    if (url) {
+      connect();
+    }
     return () => {
       if (socket) {
         socket.close();
       }
     };
-  }, [connect]);
+  }, [url, connect]);
 
-  return { notifications };
+  return { notifications, isLoading };
 }
