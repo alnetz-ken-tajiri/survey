@@ -32,6 +32,7 @@ interface APIResponse {
   }[]
   createdAt: string
   fileUrl: string
+  isCompleted: boolean
 }
 
 // コンテキスト型

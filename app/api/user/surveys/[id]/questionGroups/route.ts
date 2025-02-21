@@ -2,6 +2,7 @@ import { authOptions } from "@/lib/auth"
 import { getServerSession } from "next-auth"
 import { NextResponse } from "next/server"
 import prisma from "@/lib/prisma"
+import { SurveyTargetStatus } from "@prisma/client"
 
 /**
  * 質問グループを取得する
@@ -34,9 +35,14 @@ export async function GET(request: Request, { params }: { params: { id: string }
             },
             include: {
                 questionGroup: true,
+                surveyTargets: {
+                    where: {
+                        userId: sessionUser.id,
+                    }
+                }
             },
         })
-        
+
         if (!survey) {
             return NextResponse.json({ error: "調査が見つかりません" }, { status: 404 })
         }
@@ -61,11 +67,18 @@ export async function GET(request: Request, { params }: { params: { id: string }
             },
         })
 
-        console.log(questionGroup)
-        const questionGroupWithSurveyId = {...questionGroup, surveyId: survey.id}
+
+
+        // 調査の画像を追加　本来ならサーベイレスポンスをベースにしたい　TODO
+        let questionGroupWithSurveyId = { ...questionGroup, surveyId: survey.id, fileUrl: survey.image , isCompleted: false}
 
         if (!questionGroupWithSurveyId) {
             return NextResponse.json({ error: "質問グループが見つかりません" }, { status: 404 })
+        }
+
+        //回答済みの場合
+        if (survey.surveyTargets.length > 0 && survey.surveyTargets[0].status === SurveyTargetStatus.COMPLETED) {
+            questionGroupWithSurveyId = { ...questionGroup, surveyId: survey.id, fileUrl: survey.image,  isCompleted: true }
         }
 
 
