@@ -10,8 +10,9 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form"
+import { Switch } from "@/components/ui/switch"
 import { toast } from "@/hooks/use-toast"
-import { Plus, X, ArrowUp, ArrowDown } from "lucide-react"
+import { Plus, X, ArrowUp, ArrowDown, Globe, Lock } from "lucide-react"
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { QuestionPreview } from "@/components/QuestionPreview"
@@ -20,6 +21,7 @@ import { Card } from "@/components/ui/card"
 const questionGroupSchema = z.object({
   name: z.string().min(1, "質問グループ名は必須です"),
   description: z.string().optional(),
+  public: z.boolean().default(false),
   questions: z.array(
     z.object({
       id: z.string(),
@@ -61,6 +63,7 @@ export default function EditQuestionGroup({ params }: { params: { id: string } }
     defaultValues: {
       name: "",
       description: "",
+      public: false,
       questions: [],
     },
   })
@@ -92,6 +95,7 @@ export default function EditQuestionGroup({ params }: { params: { id: string } }
         form.reset({
           name: questionGroup.name,
           description: questionGroup.description,
+          public: questionGroup.public || false,
           questions: questionGroup.questionGroupQuestions.map((qgq: any) => qgq.question),
         })
       } catch (error) {
@@ -161,8 +165,14 @@ export default function EditQuestionGroup({ params }: { params: { id: string } }
     }
   }
 
+  const isPublic = form.watch("public")
+
   if (isLoading) {
-    return <div>読み込み中...</div>
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500"></div>
+      </div>
+    )
   }
 
   return (
@@ -195,6 +205,33 @@ export default function EditQuestionGroup({ params }: { params: { id: string } }
                       <Textarea placeholder="質問グループの説明を入力" {...field} />
                     </FormControl>
                     <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="public"
+                render={({ field }) => (
+                  <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
+                    <div className="space-y-0.5">
+                      <FormLabel className="text-base">公開設定</FormLabel>
+                      <div className="flex items-center text-sm text-muted-foreground">
+                        {isPublic ? (
+                          <Globe className="mr-2 h-4 w-4 text-green-500" />
+                        ) : (
+                          <Lock className="mr-2 h-4 w-4 text-orange-500" />
+                        )}
+                        {isPublic ? "公開" : "非公開"}
+                        <p className="ml-2">
+                          {isPublic
+                            ? "この質問グループは他のユーザーも利用できます"
+                            : "この質問グループはあなただけが利用できます"}
+                        </p>
+                      </div>
+                    </div>
+                    <FormControl>
+                      <Switch checked={field.value} onCheckedChange={field.onChange} />
+                    </FormControl>
                   </FormItem>
                 )}
               />

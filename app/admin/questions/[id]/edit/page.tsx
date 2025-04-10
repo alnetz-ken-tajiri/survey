@@ -17,6 +17,8 @@ import { Plus, Trash2, X, Check } from "lucide-react"
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { cn } from "@/lib/utils"
+import { CreateCategoryDialog } from "@/components/admin/questions/create-category-dialog"
+import { getUserData } from "@/utils/getUserData"
 
 const QuestionType = {
   TEXT: "TEXT",
@@ -24,6 +26,11 @@ const QuestionType = {
   CHECKBOX: "CHECKBOX",
   SELECT: "SELECT",
   FILE: "FILE",
+} as const
+
+const QuestionRole = {
+  NORMAL: "NORMAL",
+  CATEGORY: "CATEGORY",
 } as const
 
 const questionOptionSchema = z.object({
@@ -38,6 +45,8 @@ const questionSchema = z.object({
   description: z.string().optional(),
   public: z.boolean(),
   type: z.enum([QuestionType.TEXT, QuestionType.RADIO, QuestionType.CHECKBOX, QuestionType.SELECT, QuestionType.FILE]),
+  role: z.enum([QuestionRole.NORMAL, QuestionRole.CATEGORY]),
+  categoryId: z.string().optional(),
   questionOptions: z.array(questionOptionSchema).optional(),
   hashtags: z.array(z.string()),
 })
@@ -49,6 +58,23 @@ interface HashtagResult {
   name: string
 }
 
+interface CategoryResult {
+  id: string
+  name: string
+  parentId: string | null
+  children?: CategoryResult[]
+}
+
+interface UserData {
+  id: string
+  name: string
+  email: string
+  employee?: {
+    id: string
+    companyId: string
+  }
+}
+
 export default function EditQuestion({ params }: { params: { id: string } }) {
   const router = useRouter()
   const [isLoading, setIsLoading] = useState(true)
@@ -56,6 +82,11 @@ export default function EditQuestion({ params }: { params: { id: string } }) {
   const [hashtagSearch, setHashtagSearch] = useState("")
   const [hashtagResults, setHashtagResults] = useState<HashtagResult[]>([])
   const [openHashtag, setOpenHashtag] = useState(false)
+  const [categories, setCategories] = useState<CategoryResult[]>([])
+  const [isLoadingCategories, setIsLoadingCategories] = useState(false)
+  const [isCategoryDialogOpen, setIsCategoryDialogOpen] = useState(false)
+  const [companyId, setCompanyId] = useState<string | null>(null)
+  const [isLoadingUser, setIsLoadingUser] = useState(true)
 
   const form = useForm<QuestionFormValues>({
     resolver: zodResolver(questionSchema),
@@ -65,6 +96,7 @@ export default function EditQuestion({ params }: { params: { id: string } }) {
       description: "",
       public: false,
       type: QuestionType.TEXT,
+      role: QuestionRole.NORMAL,
       questionOptions: [],
       hashtags: [],
     },
@@ -72,6 +104,26 @@ export default function EditQuestion({ params }: { params: { id: string } }) {
 
   const questionType = form.watch("type")
   const hashtags = form.watch("hashtags")
+
+  // ユーザー情報を取得してcompanyIdを設定
+  useEffect(() => {
+    const fetchUserData = async () => {
+      try {
+        setIsLoadingUser(true)
+        const userData = await getUserData()
+
+        if (userData?.employee?.companyId) {
+          setCompanyId(userData.employee.companyId)
+        }
+      } catch (error) {
+        console.error("ユーザー情報の取得中にエラーが発生しました:", error)
+      } finally {
+        setIsLoadingUser(false)
+      }
+    }
+
+    fetchUserData()
+  }, [])
 
   const searchHashtags = useCallback(async (search: string) => {
     try {
@@ -82,6 +134,26 @@ export default function EditQuestion({ params }: { params: { id: string } }) {
     }
   }, [])
 
+  const fetchCategories = useCallback(async () => {
+    try {
+      setIsLoadingCategories(true)
+      // companyIdがある場合はクエリに含める
+      const url = companyId ? `/api/admin/categories?companyId=${companyId}` : "/api/admin/categories"
+
+      const response = await axios.get(url)
+      setCategories(response.data)
+    } catch (error) {
+      console.error("カテゴリーの取得中にエラーが発生しました:", error)
+      toast({
+        title: "エラーが発生しました",
+        description: "カテゴリーの取得に失敗しました。",
+        variant: "destructive",
+      })
+    } finally {
+      setIsLoadingCategories(false)
+    }
+  }, [companyId])
+
   useEffect(() => {
     const fetchQuestion = async () => {
       try {
@@ -89,6 +161,7 @@ export default function EditQuestion({ params }: { params: { id: string } }) {
         const questionData = response.data
         form.reset({
           ...questionData,
+          role: questionData.role || QuestionRole.NORMAL, // デフォルト値を設定
           hashtags: questionData.tags.map((tag: { name: string }) => tag.name),
         })
       } catch (error) {
@@ -105,6 +178,13 @@ export default function EditQuestion({ params }: { params: { id: string } }) {
 
     fetchQuestion()
   }, [params.id, form])
+
+  useEffect(() => {
+    // companyIdが設定されたらカテゴリーを取得
+    if (!isLoadingUser) {
+      fetchCategories()
+    }
+  }, [fetchCategories, isLoadingUser])
 
   useEffect(() => {
     const debounceTimer = setTimeout(() => {
@@ -151,6 +231,8 @@ export default function EditQuestion({ params }: { params: { id: string } }) {
     try {
       const formattedData = {
         ...data,
+        companyId: companyId, // 会社IDを追加
+        categoryId: data.categoryId === "none" || data.categoryId === "" ? null : data.categoryId,
         questionOptions: data.questionOptions?.filter((option) => option.name && option.value) || [],
       }
 
@@ -170,7 +252,29 @@ export default function EditQuestion({ params }: { params: { id: string } }) {
     }
   }
 
-  if (isLoading) {
+  const handleCategoryCreated = (newCategory: CategoryResult) => {
+    setCategories((prevCategories) => [...prevCategories, newCategory])
+    form.setValue("categoryId", newCategory.id)
+  }
+
+  // カテゴリーのフラット化（階層構造を平坦なリストに変換）
+  const flattenCategories = (
+    categories: CategoryResult[],
+    depth = 0,
+  ): { id: string; name: string; depth: number }[] => {
+    let result: { id: string; name: string; depth: number }[] = []
+
+    categories.forEach((category) => {
+      result.push({ id: category.id, name: category.name, depth })
+      if (category.children && category.children.length > 0) {
+        result = [...result, ...flattenCategories(category.children, depth + 1)]
+      }
+    })
+
+    return result
+  }
+
+  if (isLoading || isLoadingUser) {
     return <div>Loading...</div>
   }
 
@@ -220,6 +324,74 @@ export default function EditQuestion({ params }: { params: { id: string } }) {
               </FormItem>
             )}
           />
+
+          <div className="space-y-2">
+            <div className="flex items-center justify-between">
+              <FormLabel>カテゴリー</FormLabel>
+              <Button type="button" variant="outline" size="sm" onClick={() => setIsCategoryDialogOpen(true)}>
+                <Plus className="mr-2 h-4 w-4" /> 新規カテゴリー
+              </Button>
+            </div>
+            <FormField
+              control={form.control}
+              name="categoryId"
+              render={({ field }) => (
+                <FormItem>
+                  <Select onValueChange={field.onChange} value={field.value}>
+                    <FormControl>
+                      <SelectTrigger>
+                        <SelectValue placeholder="カテゴリーを選択" />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      <SelectItem value="none">カテゴリーなし</SelectItem>
+                      {isLoadingCategories ? (
+                        <SelectItem value="loading" disabled>
+                          読み込み中...
+                        </SelectItem>
+                      ) : (
+                        flattenCategories(categories).map((category) => (
+                          <SelectItem key={category.id} value={category.id}>
+                            {Array(category.depth).fill("　").join("")}
+                            {category.depth > 0 ? "└ " : ""}
+                            {category.name}
+                          </SelectItem>
+                        ))
+                      )}
+                    </SelectContent>
+                  </Select>
+                  <FormDescription>この質問が属するカテゴリーを選択してください</FormDescription>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+          </div>
+
+          <FormField
+            control={form.control}
+            name="role"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>質問の役割</FormLabel>
+                <Select onValueChange={field.onChange} value={field.value}>
+                  <FormControl>
+                    <SelectTrigger>
+                      <SelectValue placeholder="質問の役割を選択" />
+                    </SelectTrigger>
+                  </FormControl>
+                  <SelectContent>
+                    <SelectItem value={QuestionRole.NORMAL}>通常</SelectItem>
+                    <SelectItem value={QuestionRole.CATEGORY}>カテゴリー</SelectItem>
+                  </SelectContent>
+                </Select>
+                <FormDescription>
+                  「カテゴリー」を選択すると、この質問は回答者をグループ分けするために使用されます
+                </FormDescription>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+
           <FormField
             control={form.control}
             name="type"
@@ -244,6 +416,71 @@ export default function EditQuestion({ params }: { params: { id: string } }) {
               </FormItem>
             )}
           />
+
+          {questionType === QuestionType.RADIO && (
+            <div className="mt-4">
+              <FormLabel>テンプレート</FormLabel>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mt-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => {
+                    form.setValue("questionOptions", [
+                      { name: "非常に不満", value: "1" },
+                      { name: "不満", value: "2" },
+                      { name: "普通", value: "3" },
+                      { name: "満足", value: "4" },
+                      { name: "非常に満足", value: "5" },
+                    ])
+                  }}
+                  className="justify-start text-left h-auto py-3"
+                >
+                  <div>
+                    <div className="font-medium">5段階評価（満足度）</div>
+                    <div className="text-xs text-muted-foreground mt-1">非常に不満 → 非常に満足</div>
+                  </div>
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => {
+                    form.setValue("questionOptions", [
+                      { name: "全く同意しない", value: "1" },
+                      { name: "同意しない", value: "2" },
+                      { name: "どちらでもない", value: "3" },
+                      { name: "同意する", value: "4" },
+                      { name: "強く同意する", value: "5" },
+                    ])
+                  }}
+                  className="justify-start text-left h-auto py-3"
+                >
+                  <div>
+                    <div className="font-medium">5段階評価（同意度）</div>
+                    <div className="text-xs text-muted-foreground mt-1">全く同意しない → 強く同意する</div>
+                  </div>
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => {
+                    form.setValue("questionOptions", [
+                      { name: "全くない", value: "1" },
+                      { name: "まれに", value: "2" },
+                      { name: "時々", value: "3" },
+                      { name: "頻繁に", value: "4" },
+                      { name: "常に", value: "5" },
+                    ])
+                  }}
+                  className="justify-start text-left h-auto py-3"
+                >
+                  <div>
+                    <div className="font-medium">5段階評価（頻度）</div>
+                    <div className="text-xs text-muted-foreground mt-1">全くない → 常に</div>
+                  </div>
+                </Button>
+              </div>
+            </div>
+          )}
 
           {["RADIO", "CHECKBOX", "SELECT"].includes(questionType) && (
             <div className="space-y-2">
@@ -388,6 +625,14 @@ export default function EditQuestion({ params }: { params: { id: string } }) {
           <Button type="submit">質問を更新</Button>
         </form>
       </Form>
+
+      <CreateCategoryDialog
+        open={isCategoryDialogOpen}
+        onOpenChange={setIsCategoryDialogOpen}
+        categories={categories}
+        onCategoryCreated={handleCategoryCreated}
+        companyId={companyId}
+      />
     </div>
   )
 }

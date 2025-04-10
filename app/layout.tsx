@@ -4,7 +4,7 @@ import "./globals.css";
 import { Toaster } from "@/components/ui/toaster";
 import { Inter } from "next/font/google"
 import type React from "react" // Import React
-import { ClientSessionProvider } from "@/components/ClientSessionProvider";
+import { ClientSessionProvider } from "@/contexts/ClientSessionProvider";
 
 const geistSans = localFont({
   src: "./fonts/GeistVF.woff",

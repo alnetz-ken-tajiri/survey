@@ -62,13 +62,15 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
     }
 
     const body = await request.json()
-    const { name, description, questions } = body
+    const { name, description, questions, public: isPublic } = body
 
+    console.log("isPublic", isPublic)
     const questionGroup = await prisma.questionGroup.update({
       where: { id: params.id, companyId },
       data: {
         name,
         description,
+        public: isPublic,
         questionGroupQuestions: {
           deleteMany: {},
           create: questions.map((question: { id: string }, index: number) => ({

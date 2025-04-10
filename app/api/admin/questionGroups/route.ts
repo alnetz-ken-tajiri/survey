@@ -17,10 +17,14 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: "Company ID is required" }, { status: 400 })
     }
 
+    // 他のユーザーが作成した質問グループも表示
     const questionGroups = await prisma.questionGroup.findMany({
       where: {
-        companyId,
         deletedAt: null,
+        OR: [
+          { public: true },
+          {  companyId: companyId },
+        ],
       },
       include: {
         questionGroupQuestions: {
@@ -28,6 +32,7 @@ export async function GET(request: NextRequest) {
             question: true,
           },
         },
+        company: true,
       },
       orderBy: { createdAt: "desc" },
     })
@@ -54,13 +59,14 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json()
-    const { name, description, questions } = body
+    const { name, description, questions, public: isPublic } = body
 
     const questionGroup = await prisma.questionGroup.create({
       data: {
         name,
         description,
         companyId,
+        public: isPublic,
         questionGroupQuestions: {
           create: questions.map((question: { id: string }, index: number) => ({
             questionId: question.id,

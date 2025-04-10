@@ -11,7 +11,7 @@ import { Input } from "@/components/ui/input"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Badge } from "@/components/ui/badge"
-import { Loader2, Search, Plus, MoreHorizontal, Mail, Users, FileText, BarChart } from "lucide-react"
+import { Loader2, Search, Plus, MoreHorizontal, Mail, Users, FileText, BarChart, GanttChart } from "lucide-react"
 import { format } from "date-fns"
 import { ja } from "date-fns/locale"
 
@@ -157,6 +157,12 @@ export default function SurveyListPage() {
                   <DropdownMenuItem asChild>
                     <Link href={`/admin/surveys/${survey.id}/responses`}>
                       <BarChart className="mr-2 h-4 w-4" /> 回答一覧
+                    </Link>
+                    
+                  </DropdownMenuItem>
+                  <DropdownMenuItem asChild>
+                    <Link href={`/admin/surveys/${survey.id}/graph`}>
+                      <GanttChart className="mr-2 h-4 w-4" /> グラフ
                     </Link>
                   </DropdownMenuItem>
                 </DropdownMenuContent>

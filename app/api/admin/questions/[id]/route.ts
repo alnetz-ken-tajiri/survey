@@ -27,6 +27,7 @@ export async function GET(request: NextRequest, { params }: { params: { id: stri
       include: {
         questionOptions: true,
         tags: true,
+        category: true,
       },
     })
 
@@ -56,7 +57,7 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
     }
 
     const body = await request.json()
-    const { name, description, public: isPublic, type, questionOptions, hashtags } = body
+    const { name, description, public: isPublic, type, questionOptions, hashtags, role, categoryId } = body
 
     const question = await prisma.question.update({
       where: { id: params.id, companyId },
@@ -65,6 +66,8 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
         description,
         public: isPublic,
         type,
+        role,
+        categoryId: categoryId || null,
         questionOptions: {
           deleteMany: {},
           create: questionOptions,

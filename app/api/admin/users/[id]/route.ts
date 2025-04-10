@@ -17,6 +17,7 @@ export async function GET(request: Request, { params }: { params: { id: string }
       include: {
         employee: {
           include: {
+            company: true,
             organization: true,
             leadOrganizations: {
               where: {

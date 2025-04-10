@@ -7,17 +7,6 @@ import { getServerSession } from "next-auth";
 
 const prisma = new PrismaClient();
 
-// フォームで送信されるデータの型定義
-interface Question {
-  id: string;
-  answer: any; // テキストの場合、またはオプションID（文字列）、ファイルの場合はオブジェクトなど
-}
-
-interface QuestionGroup {
-  id: string; // 回答対象の質問グループID（Response.questionId に入れるなど）
-  questions: Question[];
-}
-
 interface OptionData {
   questionOptionId: string;
   optionLabel?: string;
@@ -26,33 +15,8 @@ interface OptionData {
 
 export async function POST(request: NextRequest) {
   try {
-    // ■ 1. フォームデータのパースと questionGroup の検証
+    // ■ 1. フォームデータのパース：surveyId と answers を取得
     const formData = await request.formData();
-    const questionGroupData = formData.get("questionGroup");
-    if (!questionGroupData) {
-      return NextResponse.json(
-        { message: "questionGroup が送信されていません" },
-        { status: 400 }
-      );
-    }
-    let questionGroup: QuestionGroup;
-    try {
-      questionGroup = JSON.parse(questionGroupData.toString());
-    } catch (error) {
-      return NextResponse.json(
-        { message: "questionGroup の JSON が不正です" },
-        { status: 400 }
-      );
-    }
-
-    // ■ 2. セッションの確認と対象者（surveyTarget）の取得
-    const session = await getServerSession(authOptions);
-    if (!session) {
-      return NextResponse.json(
-        { message: "認証されていません" },
-        { status: 401 }
-      );
-    }
     const surveyId = formData.get("surveyId") as string;
     if (!surveyId) {
       return NextResponse.json(
@@ -60,18 +24,40 @@ export async function POST(request: NextRequest) {
         { status: 400 }
       );
     }
+    const answersData = formData.get("answers");
+    if (!answersData) {
+      return NextResponse.json(
+        { message: "answers が送信されていません" },
+        { status: 400 }
+      );
+    }
+    let answers: Record<
+      string,
+      {
+        type: string;
+        value: any;
+        optionId: any;
+      }
+    >;
+    try {
+      answers = JSON.parse(answersData.toString());
+    } catch (error) {
+      return NextResponse.json(
+        { message: "answers の JSON が不正です" },
+        { status: 400 }
+      );
+    }
+    
+    // ■ 2. セッション確認と対象者の取得
+    const session = await getServerSession(authOptions);
+    if (!session) {
+      return NextResponse.json(
+        { message: "認証されていません" },
+        { status: 401 }
+      );
+    }
     const target = await prisma.surveyTarget.findFirst({
-      where: { surveyId: surveyId, userId: session.user?.id },
-      include: { 
-        survey: { 
-          include: { 
-            questionGroup: true
-          },
-          
-        },
-        
-      },
-
+      where: { surveyId, userId: session.user?.id }
     });
     if (!target) {
       return NextResponse.json(
@@ -81,19 +67,22 @@ export async function POST(request: NextRequest) {
     }
     const targetId = target.id;
 
-    // ■ 3. メインの回答レコード（Response）の作成  
-    // ※ここでは Response.questionId に questionGroup.id をセットしています（要件に合わせて調整してください）
-    const responseRecord = await prisma.response.create({
-      data: {
-        targetId,
-        questionId: questionGroup.id,
-        questionName: "Survey Response", // 必要に応じて実際のタイトルに変更
-        description: "Survey submission",
-      },
+    // ■ 3. 回答およびファイルアップロードに含まれる全質問IDのセットを作成
+    const questionIdsSet = new Set<string>();
+    // answers にある質問ID
+    Object.keys(answers).forEach(qid => questionIdsSet.add(qid));
+    // formData のキーで "file.<質問ID>" となっているものを追加
+    Array.from(formData.entries()).forEach(([key]) => {
+      if (key.startsWith("file.")) {
+        const parts = key.split(".");
+        if (parts.length >= 2) {
+          questionIdsSet.add(parts[1]);
+        }
+      }
     });
-
-    // ■ 4. DB から対象の質問情報（型やオプション情報）を取得  
-    const questionIds = questionGroup.questions.map((q) => q.id);
+    const questionIds = Array.from(questionIdsSet);
+    
+    // ■ 4. DB から各質問情報を取得（オプション情報も含む）
     const questionRecords = await prisma.question.findMany({
       where: { id: { in: questionIds } },
       include: { questionOptions: true },
@@ -103,99 +92,142 @@ export async function POST(request: NextRequest) {
       questionsMap.set(q.id, q);
     }
 
-    // ■ 5. ファイル以外の回答（テキスト・オプション）の処理
-    for (const question of questionGroup.questions) {
-      const qRecord = questionsMap.get(question.id);
+    // ■ 5. 各質問毎に Response レコードを作成（responseは質問と対になります）
+    const responseRecordsMap = new Map<string, any>(); // questionId → Response レコード
+    for (const questionId of questionIds) {
+      const qRecord = questionsMap.get(questionId);
       if (!qRecord) {
-        console.warn(`質問レコードが見つかりませんでした (id: ${question.id})`);
+        console.warn(`質問レコードが見つかりませんでした (id: ${questionId})`);
+        continue;
+      }
+      const responseRecord = await prisma.response.create({
+        data: {
+          targetId,
+          questionId: qRecord.id,
+          questionName: qRecord.name,
+          description: "Survey submission",
+        },
+      });
+      responseRecordsMap.set(questionId, responseRecord);
+    }
+
+    // ■ 6. answers オブジェクトの処理：各質問の回答内容に応じた ResponseDetail の作成
+    for (const questionId in answers) {
+      const ans = answers[questionId];
+      const qRecord = questionsMap.get(questionId);
+      if (!qRecord) {
+        console.warn(`質問レコードが見つかりませんでした (id: ${questionId})`);
+        continue;
+      }
+      const responseRecord = responseRecordsMap.get(questionId);
+      if (!responseRecord) {
+        console.warn(`Response レコードが作成されていません (questionId: ${questionId})`);
         continue;
       }
       const qType = qRecord.type;
       if (qType === "TEXT" || qType === "CALENDAR") {
-        // テキスト回答の場合：answer をそのまま textValue に保存
-        if (Array.isArray(question.answer)) {
-          for (const ans of question.answer) {
-            if (typeof ans === "string") {
-              await createResponseDetail(responseRecord.id, question.id, ans);
-            }
-          }
-        } else if (typeof question.answer === "string") {
-          await createResponseDetail(responseRecord.id, question.id, question.answer);
+        if (typeof ans.value === "string") {
+          console.log(`テキスト回答 (questionId: ${questionId})`);
+          await createResponseDetail(responseRecord.id, questionId, ans.value);
         }
-      } else if (qType === "RADIO" || qType === "SELECT" || qType === "CHECKBOX") {
-        // オプション回答の場合：answer に option ID が送られてくると想定
-        if (Array.isArray(question.answer)) {
-          for (const ans of question.answer) {
-            if (typeof ans === "string") {
-              const option = qRecord.questionOptions.find((opt) => opt.id === ans);
-              if (option) {
-                await createResponseDetail(responseRecord.id, question.id, null, {
-                  questionOptionId: option.id,
-                  optionLabel: option.name,
-                  optionValue: option.value,
-                });
-              } else {
-                // 該当オプションが存在しない場合は null で登録
-                await createResponseDetail(responseRecord.id, question.id, null);
-              }
-            }
-          }
-        } else if (typeof question.answer === "string") {
-          const option = qRecord.questionOptions.find((opt) => opt.id === question.answer);
+      } else if (qType === "RADIO" || qType === "SELECT") {
+        if (typeof ans.optionId === "string") {
+          const option = qRecord.questionOptions.find(
+            (opt) => opt.id === ans.optionId
+          );
           if (option) {
-            await createResponseDetail(responseRecord.id, question.id, null, {
+            console.log(`オプションが見つかりました (optionId: ${option.id})`);
+            await createResponseDetail(responseRecord.id, questionId, null, {
               questionOptionId: option.id,
               optionLabel: option.name,
               optionValue: option.value,
             });
           } else {
-            await createResponseDetail(responseRecord.id, question.id, null);
+            console.warn(`オプションが見つかりませんでした (optionId: ${ans.optionId})`);
+            await createResponseDetail(responseRecord.id, questionId, null);
           }
         }
+      } else if (qType === "CHECKBOX") {
+        if (Array.isArray(ans.optionId)) {
+          for (const optId of ans.optionId) {
+            const option = qRecord.questionOptions.find(
+              (opt) => opt.id === optId
+            );
+            if (option) {
+              await createResponseDetail(responseRecord.id, questionId, null, {
+                questionOptionId: option.id,
+                optionLabel: option.name,
+                optionValue: option.value,
+              });
+            } else {
+              await createResponseDetail(responseRecord.id, questionId, null);
+            }
+          }
+        }
+      } else {
+        console.warn(`未対応の質問タイプです (questionId: ${questionId})`);
       }
-      // FILE タイプの場合は、ファイルアップロード処理で対応するのでここでは何もしません
+      // FILE タイプは、ファイルアップロード処理で対応
     }
 
-    // ■ 6. ファイルアップロードの処理  
-    // フォームデータ内のキー "files.<質問ID>" となっている項目を処理します。  
-    // ※ファイル回答では、ResponseDetail には questionOptionId は設定せず、textValue にアップロード先のパスを保存します。
+    // ■ 7. ファイルアップロードの処理（キー "file.<質問ID>" で送信されているもの）
     const fileUploadPromises = Array.from(formData.entries())
-      .filter(([key]) => key.startsWith("files."))
+      .filter(([key]) => key.startsWith("file."))
       .map(async ([key, fileEntry]) => {
         if (!(fileEntry instanceof File)) return;
-        // key の形式は "files.<questionId>" とする（questionId は参考情報）
         const parts = key.split(".");
         if (parts.length < 2) return;
-        // 質問ID は使わなくてもよいですが、ファイル回答なので ResponseDetail.questionOptionId は null にする
+        const questionId = parts[1];
+        let responseRecord = responseRecordsMap.get(questionId);
+        // 回答が answers に含まれていない場合は、ここで Response レコードを新たに作成
+        if (!responseRecord) {
+          const qRecord = questionsMap.get(questionId);
+          if (!qRecord) {
+            console.warn(`質問レコードが見つかりませんでした (id: ${questionId})`);
+            return;
+          }
+          responseRecord = await prisma.response.create({
+            data: {
+              targetId,
+              questionId: qRecord.id,
+              questionName: qRecord.name,
+              description: "Survey submission",
+            },
+          });
+          responseRecordsMap.set(questionId, responseRecord);
+        }
         await handleFileUpload(responseRecord.id, fileEntry);
       });
+    await Promise.all(fileUploadPromises);
 
+    // ■ 8. 対象者のステータス更新（COMPLETED）
     await prisma.surveyTarget.update({
       where: { id: targetId },
       data: { status: "COMPLETED" },
-    })
-
-    await Promise.all(fileUploadPromises);
+    });
 
     return NextResponse.json(
-      { message: "Response submitted successfully", responseId: responseRecord.id },
+      { message: "Response submitted successfully" },
       { status: 200 }
     );
   } catch (error) {
     console.error("Error processing response:", error);
-    return NextResponse.json({ message: "Internal Server Error" }, { status: 500 });
+    return NextResponse.json(
+      { message: "Internal Server Error" },
+      { status: 500 }
+    );
   }
 }
 
 /**
  * createResponseDetail
  *
- * テキストやオプション回答の場合の ResponseDetail レコードを作成します。
+ * ResponseDetail レコードを作成します。
  * ・テキスト回答の場合は textValue に値を入れ、questionOptionId は null とします。
  * ・オプション回答の場合は、optionData がある場合に questionOptionId, optionLabel, optionValue をセットします。
  *
  * @param responseId   Response レコードのID
- * @param questionId   （参考）質問ID
+ * @param questionId   質問ID（参考情報）
  * @param textValue    回答内容（テキストの場合）
  * @param optionData   オプション回答の場合のデータ（存在しなければ省略可）
  */
@@ -205,11 +237,11 @@ async function createResponseDetail(
   textValue: string | null,
   optionData?: OptionData
 ) {
+
+  console.log(`createResponseDetail (responseId: ${responseId}, questionId: ${questionId}, textValue: ${textValue}, optionData: ${JSON.stringify(optionData)})`);
   await prisma.responseDetail.create({
     data: {
       responseId,
-      // オプション回答の場合は optionData.questionOptionId をセット、
-      // テキスト回答の場合は null として登録（外部キー制約を満たすため）
       questionOptionId: optionData ? optionData.questionOptionId : null,
       optionLabel: optionData ? optionData.optionLabel : null,
       optionValue: optionData ? optionData.optionValue : null,
@@ -221,11 +253,10 @@ async function createResponseDetail(
 /**
  * handleFileUpload
  *
- * ファイルアップロード処理を行います。  
- * 1. アップロード先ディレクトリ（public/uploads）が存在しなければ作成  
- * 2. 一意のファイル名（タイムスタンプ付き）で保存  
- * 3. 保存先パスを textValue として ResponseDetail を作成  
- *    ※ファイル回答の場合は、questionOptionId は null で登録します。
+ * ファイルアップロード処理を行います。
+ * 1. アップロード先ディレクトリ（public/uploads）が存在しなければ作成
+ * 2. 一意のファイル名（タイムスタンプ付き）で保存
+ * 3. 保存先パスを textValue として ResponseDetail を作成
  *
  * @param responseId   Response レコードのID
  * @param file         アップロードされた File オブジェクト
@@ -245,8 +276,7 @@ async function handleFileUpload(
     const filePath = join(uploadsDir, fileName);
     await writeFile(filePath, buffer);
 
-    // ファイル回答の場合、ResponseDetail には questionOptionId を null とし、
-    // textValue にアップロード先のパスを保存します。
+    // ファイルアップロードの場合、ResponseDetail にファイルパスを保存（questionOptionId は null）
     await prisma.responseDetail.create({
       data: {
         responseId,

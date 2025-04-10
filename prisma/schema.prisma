@@ -5,7 +5,7 @@
 // Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
 
 generator client {
-    provider = "prisma-client-js"
+    provider      = "prisma-client-js"
     binaryTargets = ["native", "rhel-openssl-3.0.x"]
 }
 
@@ -31,12 +31,23 @@ model Survey {
     updatedAt       DateTime     @default(now()) @updatedAt @map("updated_at")
     deletedAt       DateTime?    @map("deleted_at")
 
-    questionGroup  QuestionGroup   @relation(fields: [questionGroupId], references: [id])
-    surveyTargets  SurveyTarget[]
-    company        Company?        @relation(fields: [companyId], references: [id])
-    emailTemplates EmailTemplate[]
+    questionGroup        QuestionGroup         @relation(fields: [questionGroupId], references: [id])
+    surveyTargets        SurveyTarget[]
+    company              Company?              @relation(fields: [companyId], references: [id])
+    emailTemplates       EmailTemplate[]
+    surveyDisplaySetting SurveyDisplaySetting?
 
     @@map("surveys")
+}
+
+model SurveyDisplaySetting {
+    id           String @id @default(cuid())
+    surveyId     String @unique @map("survey_id") // どの質問グループに対する設定か
+    displayCount Int    @map("display_count") // 一度に表示する質問の数
+
+    survey Survey @relation(fields: [surveyId], references: [id])
+
+    @@map("survey_display_settings")
 }
 
 enum SurveyStatus {
@@ -166,6 +177,7 @@ model QuestionGroup {
     name        String
     description String?   @db.Text
     fileUrl     String?   @db.Text
+    public      Boolean   @default(false)
     createdAt   DateTime  @default(now()) @map("created_at")
     updatedAt   DateTime  @default(now()) @updatedAt @map("updated_at")
     deletedAt   DateTime? @map("deleted_at")
@@ -199,6 +211,8 @@ model Question {
     public      Boolean      @default(false)
     order       Int          @default(autoincrement())
     type        QuestionType
+    role        QuestionRole @default(NORMAL)
+    categoryId  String?      @map("category_id")
     createdAt   DateTime     @default(now()) @map("created_at")
     updatedAt   DateTime     @default(now()) @updatedAt @map("updated_at")
     deletedAt   DateTime?    @map("deleted_at")
@@ -210,7 +224,17 @@ model Question {
     // 多対多リレーション: Question <-> Tag
     tags Tag[] @relation("QuestionTags")
 
+    fromLinks QuestionLink[] @relation("QuestionRelationsFrom")
+    toLinks   QuestionLink[] @relation("QuestionRelationsTo")
+
+    category Category? @relation(fields: [categoryId], references: [id])
+
     @@map("questions")
+}
+
+enum QuestionRole {
+    NORMAL
+    CATEGORY
 }
 
 //中間テーブルは自動生成
@@ -246,6 +270,35 @@ enum QuestionType {
     // 必要に応じて増やす
 }
 
+model QuestionLink {
+    id             String  @id @default(cuid())
+    fromQuestionId String  @map("from_question_id")
+    toQuestionId   String  @map("to_question_id")
+    relationType   String? // 関係の種類（例："conditional", "dependent" など、必要に応じてenum化も可能）
+
+    fromQuestion Question @relation("QuestionRelationsFrom", fields: [fromQuestionId], references: [id])
+    toQuestion   Question @relation("QuestionRelationsTo", fields: [toQuestionId], references: [id])
+
+    @@unique([fromQuestionId, toQuestionId])
+    @@map("question_links")
+}
+
+model Category {
+    id        String     @id @default(cuid())
+    name      String
+    parentId  String?
+    parent    Category?  @relation("CategoryHierarchy", fields: [parentId], references: [id])
+    children  Category[] @relation("CategoryHierarchy")
+    companyId String?
+    company   Company?   @relation(fields: [companyId], references: [id])
+    createdAt DateTime   @default(now()) @map("created_at")
+    updatedAt DateTime   @default(now()) @updatedAt @map("updated_at")
+    deletedAt DateTime?  @map("deleted_at")
+    questions Question[]
+
+    @@map("categories")
+}
+
 // -------------------------------------------------
 // ここから既存のUserやEmployee等はそのまま
 // -------------------------------------------------
@@ -269,7 +322,7 @@ model Message {
     content         String          @db.Text
     createdAt       DateTime        @default(now()) @map("created_at")
     updatedAt       DateTime        @default(now()) @updatedAt @map("updated_at")
-    deletedAt DateTime? @map("deleted_at")
+    deletedAt       DateTime?       @map("deleted_at")
     readAt          DateTime?       @map("read_at")
     importanceLevel ImportanceLevel @map("importance_level")
 
@@ -285,16 +338,16 @@ model Message {
 model Notification {
     id              String          @id @default(cuid()) @map("id")
     userId          String          @map("user_id") // 通知を受け取るユーザーのID
-    companyId       String?          @map("company_id") // 参照用　
+    companyId       String?         @map("company_id") // 参照用　
     title           String          @map("title")
     message         String          @db.Text
     createdBy       String          @map("created_by") // 通知を作成したユーザーのID
     createdAt       DateTime        @default(now()) @map("created_at")
     readAt          DateTime?       @map("read_at")
-    deletedAt DateTime? @map("deleted_at")
+    deletedAt       DateTime?       @map("deleted_at")
     importanceLevel ImportanceLevel @map("importance_level")
 
-    user User @relation(fields: [userId], references: [id])
+    user    User     @relation(fields: [userId], references: [id])
     company Company? @relation(fields: [companyId], references: [id])
 
     @@index([userId], name: "idx_notification_user_id")
@@ -418,6 +471,7 @@ model Company {
     questions                 Question[]
     companyDetail             CompanyDetail?
     notifications             Notification[]
+    Category                  Category[]
 
     @@map("companies")
 }

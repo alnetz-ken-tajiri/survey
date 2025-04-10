@@ -96,7 +96,7 @@ export function SurveyListCard() {
                     </div>
                     {canAnswer(target.survey.status, target.status) ? (
                       <Button asChild size="sm" className="bg-blue-600 hover:bg-blue-700 text-white">
-                        <Link href={`/survey/${target.survey.id}`}>回答する</Link>
+                        <Link href={`/user/surveys/${target.survey.id}`}>回答する</Link>
                       </Button>
                     ) : (
                       <Button disabled size="sm" className="bg-gray-700 text-gray-300">

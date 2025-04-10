@@ -27,6 +27,7 @@ export async function GET(request: NextRequest) {
       include: {
         questionOptions: true,
         tags: true,
+        category: true,
       },
       orderBy: { order: "asc" },
     })
@@ -53,7 +54,7 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json()
-    const { name, description, public: isPublic, type, questionOptions, hashtags } = body
+    const { name, description, public: isPublic, type, questionOptions, hashtags, categoryId } = body
 
     const question = await prisma.question.create({
       data: {
@@ -62,6 +63,7 @@ export async function POST(request: NextRequest) {
         companyId,
         public: isPublic,
         type,
+        categoryId,
         questionOptions: {
           create: questionOptions,
         },

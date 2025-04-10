@@ -1,240 +1,140 @@
 "use client"
 
-import { useState, useEffect, useCallback } from "react"
-import { useRouter } from "next/navigation"
-import { useForm, useFieldArray } from "react-hook-form"
-import { zodResolver } from "@hookform/resolvers/zod"
-import * as z from "zod"
-import axios from "axios"
-import { Button } from "@/components/ui/button"
+import { FormDescription } from "@/components/ui/form"
+
+import { useState } from "react"
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form"
-import { toast } from "@/hooks/use-toast"
-import { Plus, X, ArrowUp, ArrowDown } from "lucide-react"
-import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command"
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
-import { QuestionPreview } from "@/components/QuestionPreview"
-import { Card } from "@/components/ui/card"
+import { Switch } from "@/components/ui/switch"
+import { Button } from "@/components/ui/button"
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { QuestionSearchDialog } from "@/components/admin/questionGroups/question-search-dialog"
+import { QuestionList } from "@/components/admin/questionGroups/question-list"
+import { QuestionListFilter } from "@/components/admin/questionGroups/question-list-filter"
+import { KeyboardShortcutsDialog } from "@/components/admin/questionGroups/keyboard-shortcuts-dialog"
+import { CSVImportExport } from "@/components/admin/questionGroups/csv-import-export"
+import { QuestionGroupProvider, useQuestionGroup } from "@/contexts/question-group-context"
+import { QuestionSearchProvider, useQuestionSearch } from "@/contexts/question-search-context"
+import { useHotkeys } from "react-hotkeys-hook"
+import { gradientButtonClass } from "@/styles/admin/questionGroups/styles"
 
-const questionGroupSchema = z.object({
-  name: z.string().min(1, "質問グループ名は必須です"),
-  description: z.string().optional(),
-  questions: z.array(
-    z.object({
-      id: z.string(),
-      name: z.string(),
-      description: z.string().nullable(),
-      type: z.string(),
-      questionOptions: z
-        .array(
-          z.object({
-            id: z.string(),
-            name: z.string(),
-            value: z.string(),
-          }),
-        )
-        .optional(),
-    }),
-  ),
-})
+function CreateQuestionGroupForm() {
+  const { form, onSubmit, isPublic } = useQuestionGroup()
+  const [activeTab, setActiveTab] = useState("basic")
+  const { setOpenSearch } = useQuestionSearch()
 
-type QuestionGroupFormValues = z.infer<typeof questionGroupSchema>
-
-interface Question {
-  id: string
-  name: string
-  description: string | null
-  type: string
-  questionOptions?: Array<{ id: string; name: string; value: string }>
-}
-
-export default function CreateQuestionGroup() {
-  const router = useRouter()
-  const [searchTerm, setSearchTerm] = useState("")
-  const [searchResults, setSearchResults] = useState<Question[]>([])
-  const [openSearch, setOpenSearch] = useState(false)
-
-  const form = useForm<QuestionGroupFormValues>({
-    resolver: zodResolver(questionGroupSchema),
-    defaultValues: {
-      name: "",
-      description: "",
-      questions: [],
-    },
-  })
-
-  const { fields, append, remove, move } = useFieldArray({
-    control: form.control,
-    name: "questions",
-  })
-
-  const searchQuestions = useCallback(async (search: string) => {
-    try {
-      const response = await axios.get(`/api/admin/questions/search?q=${search}`)
-      setSearchResults(response.data)
-    } catch (error) {
-      console.error("質問の検索中にエラーが発生しました:", error)
-      toast({
-        title: "エラーが発生しました",
-        description: "質問の検索に失敗しました。",
-        variant: "destructive",
-      })
-    }
-  }, [])
-
-  useEffect(() => {
-    const debounceTimer = setTimeout(() => {
-      if (openSearch) {
-        searchQuestions(searchTerm)
-      }
-    }, 300)
-
-    return () => clearTimeout(debounceTimer)
-  }, [searchTerm, searchQuestions, openSearch])
-
-  const addQuestion = (question: Question) => {
-    if (!form.getValues("questions").some((q) => q.id === question.id)) {
-      append(question)
-      setSearchTerm("")
-      setOpenSearch(false)
-    }
-  }
-
-  const removeQuestion = (index: number) => {
-    remove(index)
-  }
-
-  const moveQuestionUp = (index: number) => {
-    if (index > 0) {
-      move(index, index - 1)
-    }
-  }
-
-  const moveQuestionDown = (index: number) => {
-    if (index < fields.length - 1) {
-      move(index, index + 1)
-    }
-  }
-
-  const onSubmit = async (data: QuestionGroupFormValues) => {
-    try {
-      await axios.post("/api/admin/questionGroups", data)
-      toast({
-        title: "質問グループが作成されました",
-        description: "質問グループが正常に保存されました。",
-      })
-      router.push("/admin/questionGroups")
-    } catch (error) {
-      console.error("質問グループの作成中にエラーが発生しました:", error)
-      toast({
-        title: "エラーが発生しました",
-        description: "質問グループの保存中にエラーが発生しました。",
-        variant: "destructive",
-      })
-    }
-  }
+  // キーボードショートカット
+  useHotkeys("ctrl+shift+a", () => setOpenSearch(true), { preventDefault: true })
+  useHotkeys("ctrl+shift+s", () => form.handleSubmit(onSubmit)(), { preventDefault: true })
 
   return (
-    <div className="container mx-auto py-10">
-      <h1 className="text-3xl font-bold mb-6">質問グループの作成</h1>
-      <Form {...form}>
-        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
-          <Card className="p-6">
-            <div className="space-y-6">
-              <FormField
-                control={form.control}
-                name="name"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>質問グループ名</FormLabel>
-                    <FormControl>
-                      <Input placeholder="質問グループ名を入力" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={form.control}
-                name="description"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>説明</FormLabel>
-                    <FormControl>
-                      <Textarea placeholder="質問グループの説明を入力" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-            </div>
-          </Card>
-
-          <div className="space-y-4">
+    <Form {...form}>
+      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
+        <Card className="shadow-lg">
+          <CardHeader className="pb-3">
             <div className="flex items-center justify-between">
-              <h2 className="text-lg font-semibold">質問一覧</h2>
-              <Popover open={openSearch} onOpenChange={setOpenSearch}>
-                <PopoverTrigger asChild>
-                  <Button type="button" variant="outline">
-                    <Plus className="mr-2 h-4 w-4" />
-                    質問を追加
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-[400px] p-0">
-                  <Command shouldFilter={false}>
-                    <CommandInput placeholder="質問を検索..." value={searchTerm} onValueChange={setSearchTerm} />
-                    <CommandList>
-                      <CommandEmpty>質問が見つかりません</CommandEmpty>
-                      <CommandGroup>
-                        {searchResults.map((question) => (
-                          <CommandItem key={question.id} onSelect={() => addQuestion(question)} className="p-2">
-                            <QuestionPreview question={question} />
-                          </CommandItem>
-                        ))}
-                      </CommandGroup>
-                    </CommandList>
-                  </Command>
-                </PopoverContent>
-              </Popover>
-            </div>
-
-            {fields.length === 0 ? (
-              <Card className="p-6">
-                <div className="text-center text-muted-foreground">質問が追加されていません</div>
-              </Card>
-            ) : (
-              <div className="space-y-4">
-                {fields.map((field, index) => (
-                  <Card key={field.id} className="p-6">
-                    <div className="flex items-start justify-between mb-4">
-                      <div className="flex-1">
-                        <QuestionPreview question={field} />
-                      </div>
-                      <div className="flex items-center space-x-2 ml-4">
-                        <Button type="button" variant="ghost" size="icon" onClick={() => moveQuestionUp(index)}>
-                          <ArrowUp className="h-4 w-4" />
-                        </Button>
-                        <Button type="button" variant="ghost" size="icon" onClick={() => moveQuestionDown(index)}>
-                          <ArrowDown className="h-4 w-4" />
-                        </Button>
-                        <Button type="button" variant="ghost" size="icon" onClick={() => removeQuestion(index)}>
-                          <X className="h-4 w-4" />
-                        </Button>
-                      </div>
-                    </div>
-                  </Card>
-                ))}
+              <div>
+                <CardTitle className="text-2xl">質問グループの作成</CardTitle>
+                <CardDescription>質問グループを作成して、アンケートに使用できます。</CardDescription>
               </div>
-            )}
-          </div>
+              <div className="flex items-center space-x-2">
+                <CSVImportExport />
+                <KeyboardShortcutsDialog />
+              </div>
+            </div>
+          </CardHeader>
+          <CardContent className="space-y-0 pt-0">
+            <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+              <TabsList className="grid w-full grid-cols-2">
+                <TabsTrigger value="basic">基本情報</TabsTrigger>
+                <TabsTrigger value="questions">質問管理</TabsTrigger>
+              </TabsList>
+              <TabsContent value="basic" className="space-y-4 pt-4">
+                <FormField
+                  control={form.control}
+                  name="name"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>質問グループ名</FormLabel>
+                      <FormControl>
+                        <Input placeholder="質問グループ名を入力" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="description"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>説明</FormLabel>
+                      <FormControl>
+                        <Textarea placeholder="質問グループの説明を入力" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="public"
+                  render={({ field }) => (
+                    <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
+                      <div className="space-y-0.5">
+                        <FormLabel className="text-base">公開設定</FormLabel>
+                        <FormDescription>公開すると、他のユーザーもこの質問グループを使用できます。</FormDescription>
+                      </div>
+                      <FormControl>
+                        <Switch checked={field.value} onCheckedChange={field.onChange} />
+                      </FormControl>
+                    </FormItem>
+                  )}
+                />
+              </TabsContent>
+              <TabsContent value="questions" className="pt-4">
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between">
+                    <h3 className="text-lg font-medium">質問の管理</h3>
+                    <QuestionSearchDialog />
+                  </div>
 
-          <div className="flex justify-end">
-            <Button type="submit">質問グループを保存</Button>
-          </div>
-        </form>
-      </Form>
-    </div>
+                  {/* 質問リストフィルターを追加 */}
+                  <QuestionListFilter />
+
+                  <QuestionList />
+                </div>
+              </TabsContent>
+            </Tabs>
+          </CardContent>
+          <CardFooter className="flex justify-between border-t p-6">
+            <Button type="button" variant="outline">
+              キャンセル
+            </Button>
+            <Button type="submit" className={gradientButtonClass}>
+              保存
+            </Button>
+          </CardFooter>
+        </Card>
+      </form>
+    </Form>
   )
 }
 
+const CreateQuestionGroup = () => {
+  const [filterType, setFilterType] = useState("all")
+
+  return (
+    <QuestionGroupProvider>
+      {({ append }) => (
+        <QuestionSearchProvider append={append} filterType={filterType}>
+          <CreateQuestionGroupForm />
+        </QuestionSearchProvider>
+      )}
+    </QuestionGroupProvider>
+  )
+}
+
+export default CreateQuestionGroup
