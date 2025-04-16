@@ -12,7 +12,7 @@ export default function AdminLayout({
       {/* Sidebar */}
       <aside className="w-64 bg-gray-800 text-white">
         <div className="p-4">
-          <h1 className="text-2xl font-bold">HuCups 管理画面</h1>
+          <h1 className="text-2xl font-bold">HuCaps 管理画面</h1>
         </div>
         <nav className="mt-8">
           <Link href="/admin" className="block py-2 px-4 hover:bg-gray-700">

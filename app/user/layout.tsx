@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button"
 import { useWebSocket } from "@/hooks/useWebSocket"
 import { NotificationPopover } from "@/components/NotificationPopover"
 import { Home, User, ClipboardList, Settings } from "lucide-react"
+import { UserRole } from "@prisma/client"
 
 export default function UserLayout({
   children,
@@ -18,10 +19,12 @@ export default function UserLayout({
   const { data: session, status } = useSession()
   const [wsUrl, setWsUrl] = useState<string | null>(null)
   const { notifications, isLoading } = useWebSocket(wsUrl || "")
+  const [isAdmin, setIsAdmin] = useState(false)
 
   useEffect(() => {
     if (status === "authenticated" && session?.user?.id) {
       setWsUrl(`wss://8yg0beud0h.execute-api.ap-northeast-1.amazonaws.com/dev?userId=${session.user.id}`)
+      setIsAdmin(session?.user.role === UserRole.ADMIN || session?.user.role === UserRole.SUPER_USER || session?.user.role === UserRole.USER_ADMIN)
     }
   }, [status, session])
 
@@ -34,7 +37,7 @@ export default function UserLayout({
               href="/user"
               className="text-2xl font-bold bg-gradient-to-r from-blue-400 to-purple-500 bg-clip-text text-transparent hover:from-blue-500 hover:to-purple-600 transition-all"
             >
-              HuCups サーベイ
+              HuCaps サーベイ
             </Link>
             <nav className="flex items-center gap-2">
               {wsUrl && <NotificationPopover notifications={notifications} isLoading={isLoading} />}
@@ -47,9 +50,7 @@ export default function UserLayout({
               <NavLink href="/user/surveys" icon={<ClipboardList className="w-4 h-4" />}>
                 サーベイ一覧
               </NavLink>
-              {(session?.user?.role === "ADMIN" ||
-                session?.user?.role === "SUPER_USER" ||
-                session?.user?.role === "USER_ADMIN") && (
+              {isAdmin && (
                 <NavLink href="/admin" icon={<Settings className="w-4 h-4" />}>
                   管理画面
                 </NavLink>

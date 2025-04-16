@@ -2,13 +2,14 @@
 
 import { Button } from "@/components/ui/button"
 import { useRouter } from "next/navigation"
+import { signOut } from "next-auth/react"
 
 export function LogoutButton() {
   const router = useRouter()
 
   const handleLogout = () => {
     // ログアウト処理をここに実装
-    router.push("/auth/signin")
+    signOut({ callbackUrl: "/auth/signin" })
   }
 
   return (

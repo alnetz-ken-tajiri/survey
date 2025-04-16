@@ -136,6 +136,7 @@ model Response {
     updatedAt    DateTime  @default(now()) @updatedAt @map("updated_at")
     deletedAt    DateTime? @map("deleted_at")
 
+    question        Question?        @relation(fields: [questionId], references: [id])
     surveyTarget    SurveyTarget     @relation(fields: [targetId], references: [id])
     responseDetails ResponseDetail[]
 
@@ -227,7 +228,8 @@ model Question {
     fromLinks QuestionLink[] @relation("QuestionRelationsFrom")
     toLinks   QuestionLink[] @relation("QuestionRelationsTo")
 
-    category Category? @relation(fields: [categoryId], references: [id])
+    category Category?  @relation(fields: [categoryId], references: [id])
+    Response Response[]
 
     @@map("questions")
 }

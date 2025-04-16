@@ -18,25 +18,28 @@ export default function SignIn() {
 
   const handleCredentialsSignIn = async (e: React.FormEvent) => {
     e.preventDefault()
+    // URLクエリから callbackUrl を取得（App Routerの場合）
+    // ─────────────────────────────────────────
+    // useSearchParamsフックなどで取る書き方（App Router想定）
+    // (Pages Routerなら useRouter().query.callbackUrl など別の書き方)
+    const searchParams = new URLSearchParams(window.location.search)
+    const callbackUrl = searchParams.get("callbackUrl") || "/"
+  
     const res = await signIn("credentials", {
       email,
       password,
-      redirect: false,
+      callbackUrl, // 取得したcallbackUrlを渡す
+      redirect: true, 
     })
-
+  
+    // redirect=trueの場合、ログイン成功時は即リロード＆リダイレクトし、
+    // ここでのreturnは呼ばれない(エラー時は呼ばれる)
     if (res?.error) {
       toast({
         title: "ログイン失敗",
         description: res.error,
         variant: "destructive",
       })
-    } else {
-      toast({
-        title: "ログイン成功",
-        description: "正常にログインしました",
-      })
-      // Redirect to the appropriate page based on user role
-      window.location.href = "/"
     }
   }
 

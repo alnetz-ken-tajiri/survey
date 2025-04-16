@@ -23,7 +23,7 @@ function SurveyPageContent() {
         currentPage={currentPage}
         totalPages={totalPages}
       />
-      <Card className="border border-[#2f3136] bg-[#25262b] shadow-sm rounded-xl overflow-hidden">
+      <Card className="border border-[#2f3136] bg-[#25262b] mt-24 shadow-sm rounded-xl overflow-hidden">
         <div className="p-4">
           <SurveyContent surveyId={surveyId} />
         </div>
