@@ -1,16 +1,38 @@
 "use client"
 
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
-import { Editor } from "@/components/ui/editor"
 import { Badge } from "@/components/ui/badge"
 import { Variable } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 import cn from "classnames"
+import axios from "axios"
+import type { Prisma } from "@prisma/client"
+import { Editor } from "@/components/ui/editor"
+
+// ====== Types ======
+type Survey = Prisma.SurveyGetPayload<{
+  include: {
+    questionGroup: {
+      include: {
+        questionGroupQuestions: {
+          include: {
+            question: {
+              include: {
+                tags: true
+                questionOptions: true
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}>
 
 interface EmailTemplateEditorProps {
   surveyId: string
@@ -25,10 +47,6 @@ interface EmailTemplateData {
   variables: string[]
 }
 
-type AvailableVariables = {
-  [key: string]: string
-}
-
 // 表示用のラベルは定数として管理
 const AVAILABLE_VARIABLES = {
   "user.name": "回答者名",
@@ -39,7 +57,7 @@ const AVAILABLE_VARIABLES = {
   "date.deadline": "締切日",
 } as const
 
-// テンプレート内の変数を検出する関数を修正
+// テンプレート内の変数を検出する関数
 function detectVariables(content: string): string[] {
   const matches = content.match(/\{\{([^}]+)\}\}/g) || []
   return matches.map((match) => match.replace(/[{}]/g, "")).filter((key) => key in AVAILABLE_VARIABLES)
@@ -47,16 +65,58 @@ function detectVariables(content: string): string[] {
 
 export function EmailTemplateEditor({ surveyId, initialData }: EmailTemplateEditorProps) {
   const [activeTab, setActiveTab] = useState("edit")
-  const [templateData, setTemplateData] = useState<EmailTemplateData>(
-    initialData || {
-      name: "",
-      subject: "",
-      content: getDefaultTemplate(),
-      variables: detectVariables(getDefaultTemplate()),
-    },
-  )
+  const [templateData, setTemplateData] = useState<EmailTemplateData>(() => {
+    const defaultContent = getDefaultTemplate()
+    return (
+      initialData || {
+        name: "",
+        subject: "",
+        content: defaultContent,
+        variables: detectVariables(defaultContent),
+      }
+    )
+  })
+
+  // ─────────────────────────────────────────────────────────────────────────────
+  // 1) State to store the fetched survey
+  // ─────────────────────────────────────────────────────────────────────────────
+  const [surveyData, setSurveyData] = useState<Survey | null>(null)
+  const [isLoading, setIsLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
   const { toast } = useToast()
 
+  // ─────────────────────────────────────────────────────────────────────────────
+  // 2) Fetch survey data inside useEffect
+  // ─────────────────────────────────────────────────────────────────────────────
+  useEffect(() => {
+    const fetchSurveyData = async () => {
+      setIsLoading(true)
+      setError(null)
+      try {
+        const { data } = await axios.get<Survey>(`/api/admin/surveys/${surveyId}`)
+        setSurveyData(data)
+      } catch (error) {
+        console.error("Failed to fetch survey data:", error)
+        setError("サーベイデータの取得に失敗しました。")
+        // エラーが発生しても、最低限の機能は提供する
+        toast({
+          title: "エラー",
+          description: "サーベイデータの取得に失敗しました。一部の機能が制限される場合があります。",
+          variant: "destructive",
+        })
+      } finally {
+        setIsLoading(false)
+      }
+    }
+
+    fetchSurveyData()
+  }, [surveyId, toast])
+
+
+
+  // ─────────────────────────────────────────────────────────────────────────────
+  // Validation function
+  // ─────────────────────────────────────────────────────────────────────────────
   const validateTemplate = () => {
     const errors: string[] = []
     if (!templateData.name.trim()) {
@@ -88,6 +148,9 @@ export function EmailTemplateEditor({ surveyId, initialData }: EmailTemplateEdit
     }))
   }
 
+  // ─────────────────────────────────────────────────────────────────────────────
+  // Save handler
+  // ─────────────────────────────────────────────────────────────────────────────
   const handleSave = async () => {
     const errors = validateTemplate()
     if (errors.length > 0) {
@@ -141,12 +204,19 @@ export function EmailTemplateEditor({ surveyId, initialData }: EmailTemplateEdit
     }
   }
 
+  // ─────────────────────────────────────────────────────────────────────────────
+  // UI
+  // ─────────────────────────────────────────────────────────────────────────────
   return (
     <div className="container mx-auto py-6">
       <Card>
         <CardHeader>
           <CardTitle>メールテンプレートの編集</CardTitle>
-          <CardDescription>サーベイ送信時に使用するメールテンプレートをカスタマイズできます。</CardDescription>
+          <CardDescription>
+            サーベイ送信時に使用するメールテンプレートをカスタマイズできます。
+            {isLoading && " データを読み込み中..."}
+            {error && <span className="text-red-500"> {error}</span>}
+          </CardDescription>
         </CardHeader>
         <CardContent>
           <div className="grid gap-6">
@@ -204,18 +274,24 @@ export function EmailTemplateEditor({ surveyId, initialData }: EmailTemplateEdit
               <TabsContent value="preview">
                 <Card>
                   <CardContent className="prose max-w-none p-6">
-                    <div
-                      dangerouslySetInnerHTML={{
-                        __html: replaceVariables(templateData.content, {
-                          "user.name": "山田太郎",
-                          "user.email": "yamada@example.com",
-                          "survey.name": "従業員満足度調査",
-                          "survey.url": "https://example.com/survey/123",
-                          "date.response": "2024年2月14日",
-                          "date.deadline": "2024年2月28日",
-                        }),
-                      }}
-                    />
+                    {isLoading ? (
+                      <div className="py-4 text-center">プレビューを読み込み中...</div>
+                    ) : (
+                      <div
+                        dangerouslySetInnerHTML={{
+                          __html: replaceVariables(templateData.content, {
+                            "user.name": "山田太郎",
+                            "user.email": "yamada@example.com",
+                            "survey.name": surveyData?.name ?? "従業員満足度調査",
+                            "survey.url": `${process.env.NEXT_PUBLIC_APP_URL}/user/surveys/${surveyId}`,
+                            "date.response": "2024年2月14日",
+                            "date.deadline": surveyData?.deadline
+                              ? new Date(surveyData.deadline).toLocaleDateString()
+                              : "2024年3月31日",
+                          }),
+                        }}
+                      />
+                    )}
                   </CardContent>
                 </Card>
               </TabsContent>
@@ -223,7 +299,9 @@ export function EmailTemplateEditor({ surveyId, initialData }: EmailTemplateEdit
 
             <div className="flex justify-end gap-2">
               <Button variant="outline">キャンセル</Button>
-              <Button onClick={handleSave}>保存</Button>
+              <Button onClick={handleSave} disabled={isLoading}>
+                保存
+              </Button>
             </div>
           </div>
         </CardContent>
@@ -232,6 +310,7 @@ export function EmailTemplateEditor({ surveyId, initialData }: EmailTemplateEdit
   )
 }
 
+// A default HTML template for the editor
 function getDefaultTemplate() {
   return `
 <p>{{user.name}} 様</p>
@@ -248,7 +327,9 @@ function getDefaultTemplate() {
   `.trim()
 }
 
+// Simple utility to replace {{variable}} placeholders in the template
 function replaceVariables(content: string, variables: Record<string, string>) {
-  return content.replace(/\{\{([^}]+)\}\}/g, (_, key) => variables[key] || `{{${key}}}`)
+  return content.replace(/\{\{([^}]+)\}\}/g, (_, key) => {
+    return variables[key] ?? `{{${key}}}`
+  })
 }
-
