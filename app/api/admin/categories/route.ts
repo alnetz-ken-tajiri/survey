@@ -4,21 +4,33 @@ import { getCompanyId } from "@/lib/getCompanyId";
 
 const prisma = new PrismaClient();
 
-function buildCategoryTree(categories: any[], parentId: string | null = null): any[] {
-  return categories
-    .filter((category) => category.parentId === parentId)
-    .map((category) => ({
-      ...category,
-      children: buildCategoryTree(categories, category.id),
-    }));
+function buildCategoryTree(categories: any[]): any[] {
+  const categoryMap: { [key: string]: any } = {};
+  const rootCategories: any[] = [];
+
+  categories.forEach((category) => {
+    categoryMap[category.id] = { ...category, children: [] };
+  });
+
+  categories.forEach((category) => {
+    if (category.parentId && categoryMap[category.parentId]) {
+      categoryMap[category.parentId].children.push(categoryMap[category.id]);
+    } else {
+      rootCategories.push(categoryMap[category.id]);
+    }
+  });
+
+  return rootCategories;
 }
 
 export async function GET(request: Request) {
   try {
-    const companyId = await getCompanyId();
+    const { searchParams } = new URL(request.url);
+    const companyId = searchParams.get("companyId");
+
     if (!companyId) {
       return NextResponse.json(
-        { error: "Company ID not found" },
+        { error: "Company ID is required as a query parameter" },
         { status: 400 }
       );
     }
@@ -43,18 +55,14 @@ export async function GET(request: Request) {
 
 export async function POST(request: Request) {
   try {
-    const companyId = await getCompanyId();
-    if (!companyId) {
+    const body = await request.json();
+    const { name, parentId, companyId } = body;
+
+    if (!name || !companyId) {
       return NextResponse.json(
-        { error: "Company ID not found" },
+        { error: "Name and companyId are required" },
         { status: 400 }
       );
-    }
-    const body = await request.json();
-    const { name, parentId } = body;
-
-    if (!name) {
-      return NextResponse.json({ error: "Name is required" }, { status: 400 });
     }
 
     const newCategory = await prisma.category.create({
