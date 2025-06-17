@@ -23,15 +23,28 @@ function buildCategoryTree(categories: any[]): any[] {
   return rootCategories;
 }
 
+function setCorsHeaders(response: Response) {
+  response.headers.set("Access-Control-Allow-Origin", "*");
+  response.headers.set("Access-Control-Allow-Methods", "GET,POST,OPTIONS");
+  response.headers.set("Access-Control-Allow-Headers", "Content-Type");
+  return response;
+}
+
+export async function OPTIONS() {
+  return setCorsHeaders(new Response(null, { status: 204 }));
+}
+
 export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url);
     const companyId = searchParams.get("companyId");
 
     if (!companyId) {
-      return NextResponse.json(
-        { error: "Company ID is required as a query parameter" },
-        { status: 400 }
+      return setCorsHeaders(
+        NextResponse.json(
+          { error: "Company ID is required as a query parameter" },
+          { status: 400 }
+        )
       );
     }
     const categories = await prisma.category.findMany({
@@ -43,12 +56,14 @@ export async function GET(request: Request) {
 
     const categoryTree = buildCategoryTree(categories);
 
-    return NextResponse.json(categoryTree);
+    return setCorsHeaders(NextResponse.json(categoryTree));
   } catch (error) {
     console.error("Failed to fetch categories:", error);
-    return NextResponse.json(
-      { error: "Failed to fetch categories" },
-      { status: 500 }
+    return setCorsHeaders(
+      NextResponse.json(
+        { error: "Failed to fetch categories" },
+        { status: 500 }
+      )
     );
   }
 }
@@ -59,9 +74,11 @@ export async function POST(request: Request) {
     const { name, parentId, companyId } = body;
 
     if (!name || !companyId) {
-      return NextResponse.json(
-        { error: "Name and companyId are required" },
-        { status: 400 }
+      return setCorsHeaders(
+        NextResponse.json(
+          { error: "Name and companyId are required" },
+          { status: 400 }
+        )
       );
     }
 
@@ -72,12 +89,14 @@ export async function POST(request: Request) {
         companyId: companyId,
       },
     });
-    return NextResponse.json(newCategory, { status: 201 });
+    return setCorsHeaders(NextResponse.json(newCategory, { status: 201 }));
   } catch (error) {
     console.error("Failed to create category:", error);
-    return NextResponse.json(
-      { error: "Failed to create category" },
-      { status: 500 }
+    return setCorsHeaders(
+      NextResponse.json(
+        { error: "Failed to create category" },
+        { status: 500 }
+      )
     );
   }
 } 

@@ -3,6 +3,17 @@ import { PrismaClient } from '@prisma/client';
 
 const prisma = new PrismaClient();
 
+function setCorsHeaders(response: Response) {
+  response.headers.set("Access-Control-Allow-Origin", "*");
+  response.headers.set("Access-Control-Allow-Methods", "GET,PUT,DELETE,OPTIONS");
+  response.headers.set("Access-Control-Allow-Headers", "Content-Type");
+  return response;
+}
+
+export async function OPTIONS() {
+  return setCorsHeaders(new Response(null, { status: 204 }));
+}
+
 export async function GET(
   request: Request,
   { params }: { params: { id: string } }
@@ -13,14 +24,18 @@ export async function GET(
       where: { id: id },
     });
     if (!category || category.deletedAt) {
-      return NextResponse.json({ error: 'Category not found' }, { status: 404 });
+      return setCorsHeaders(
+        NextResponse.json({ error: 'Category not found' }, { status: 404 })
+      );
     }
-    return NextResponse.json(category);
+    return setCorsHeaders(NextResponse.json(category));
   } catch (error) {
     console.error(`Failed to fetch category with id ${params.id}:`, error);
-    return NextResponse.json(
-      { error: 'Failed to fetch category' },
-      { status: 500 }
+    return setCorsHeaders(
+      NextResponse.json(
+        { error: 'Failed to fetch category' },
+        { status: 500 }
+      )
     );
   }
 }
@@ -41,12 +56,14 @@ export async function PUT(
         parentId,
       },
     });
-    return NextResponse.json(updatedCategory);
+    return setCorsHeaders(NextResponse.json(updatedCategory));
   } catch (error) {
     console.error(`Failed to update category with id ${params.id}:`, error);
-    return NextResponse.json(
-      { error: 'Failed to update category' },
-      { status: 500 }
+    return setCorsHeaders(
+      NextResponse.json(
+        { error: 'Failed to update category' },
+        { status: 500 }
+      )
     );
   }
 }
@@ -63,12 +80,14 @@ export async function DELETE(
         deletedAt: new Date(),
       },
     });
-    return new NextResponse(null, { status: 204 });
+    return setCorsHeaders(new NextResponse(null, { status: 204 }));
   } catch (error) {
     console.error(`Failed to delete category with id ${params.id}:`, error);
-    return NextResponse.json(
-      { error: 'Failed to delete category' },
-      { status: 500 }
+    return setCorsHeaders(
+      NextResponse.json(
+        { error: 'Failed to delete category' },
+        { status: 500 }
+      )
     );
   }
 } 
