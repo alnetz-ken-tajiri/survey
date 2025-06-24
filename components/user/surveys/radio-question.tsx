@@ -40,7 +40,8 @@ export default function RadioQuestion({ question, number }: RadioQuestionProps) 
 
   return (
     <QuestionCard title={question.name} description={question.description} number={number}>
-      <div className="grid grid-cols-2 gap-2">
+      {/* モバイルでは縦並び、タブレット以上では横並び */}
+      <div className="flex flex-col md:flex-row md:flex-wrap md:justify-between w-full space-y-2 md:space-y-0 md:gap-2">
         {question.questionOptions.map((option) => {
           const isSelected = value === option.value
           return (
@@ -49,21 +50,22 @@ export default function RadioQuestion({ question, number }: RadioQuestionProps) 
               whileTap={{ scale: 0.98 }}
               onClick={() => handleChange(option.value, option.id)}
               className={`
-                flex items-center p-2 rounded-md cursor-pointer transition-all
+                flex items-center p-3 rounded-md cursor-pointer transition-all
+                md:flex-1 md:min-w-0 md:justify-center md:flex-col md:py-4
                 ${
                   isSelected
-                    ? "bg-gradient-to-r from-blue-900/50 to-purple-900/50 border border-blue-700 text-blue-300"
-                    : "border border-[#3b3d42] hover:border-blue-700 hover:bg-blue-900/20"
+                    ? "bg-[#2a2b30] border border-blue-700"
+                    : "border border-[#3b3d42] hover:border-blue-700 hover:bg-[#2a2b30]"
                 }
               `}
             >
               <div
                 className={`
-                  w-4 h-4 rounded-full flex items-center justify-center mr-2 transition-all
+                  w-5 h-5 rounded-full flex items-center justify-center mr-3 md:mr-0 md:mb-2 transition-all
                   ${isSelected ? "border-[5px] border-blue-500" : "border-2 border-gray-500"}
                 `}
               />
-              <span className="text-sm text-gray-200">{option.name}</span>
+              <span className="text-sm text-gray-200 md:text-center">{option.name}</span>
             </motion.div>
           )
         })}
@@ -71,4 +73,3 @@ export default function RadioQuestion({ question, number }: RadioQuestionProps) 
     </QuestionCard>
   )
 }
-
