@@ -69,20 +69,20 @@ export default function CheckboxQuestion({ question, number }: CheckboxQuestionP
                 flex items-center p-2 rounded-md cursor-pointer transition-all
                 ${
                   isSelected
-                    ? "bg-gradient-to-r from-blue-900/50 to-purple-900/50 border border-blue-700 text-blue-300"
-                    : "border border-[#3b3d42] hover:border-blue-700 hover:bg-blue-900/20"
+                    ? "bg-gray-50 border border-gray-900 text-gray-900"
+                    : "border border-gray-200 hover:border-gray-400 hover:bg-gray-50"
                 }
               `}
             >
               <div
                 className={`
                   w-4 h-4 rounded flex items-center justify-center mr-2 transition-all
-                  ${isSelected ? "bg-gradient-to-r from-blue-500 to-purple-500" : "border-2 border-gray-500"}
+                  ${isSelected ? "bg-gray-900" : "border-2 border-gray-400"}
                 `}
               >
                 {isSelected && <Check className="w-3 h-3 text-white" />}
               </div>
-              <span className="text-sm text-gray-200">{option.name}</span>
+              <span className="text-sm text-gray-700">{option.name}</span>
             </motion.div>
           )
         })}

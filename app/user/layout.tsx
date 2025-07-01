@@ -10,6 +10,7 @@ import { useWebSocket } from "@/hooks/useWebSocket"
 import { NotificationPopover } from "@/components/NotificationPopover"
 import { Home, User, ClipboardList, Settings } from "lucide-react"
 import { UserRole } from "@prisma/client"
+import Image from "next/image"
 
 export default function UserLayout({
   children,
@@ -29,15 +30,21 @@ export default function UserLayout({
   }, [status, session])
 
   return (
-    <div className="min-h-screen bg-[#1a1b1e]">
-      <header className="fixed top-0 left-0 right-0 z-50 bg-[#25262b] border-b border-[#2f3136]">
-        <div className="max-w-7xl mx-auto py-4 px-4 sm:px-6 lg:px-8">
+    <div className="min-h-screen bg-neutral-100">
+      <header className="fixed top-0 left-0 right-0 z-50 bg-white border-b border-gray-200 shadow-sm">
+        <div className="max-w-7xl mx-auto py-3 px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center">
             <Link
               href="/user"
-              className="text-2xl font-bold bg-gradient-to-r from-blue-400 to-purple-500 bg-clip-text text-transparent hover:from-blue-500 hover:to-purple-600 transition-all"
+              className="flex items-center space-x-3 hover:opacity-80 transition-opacity"
             >
-              HuCaps サーベイ
+              <Image
+                src="/images/hitokara.png"
+                alt="Hitokara"
+                width={120}
+                height={24}
+                priority
+              />
             </Link>
             <nav className="flex items-center gap-2">
               {wsUrl && <NotificationPopover notifications={notifications} isLoading={isLoading} />}
@@ -60,10 +67,23 @@ export default function UserLayout({
           </div>
         </div>
       </header>
-      <main className="max-w-7xl mx-auto py-6 px-4 sm:px-6 lg:px-8">{children}</main>
-      <footer className="bg-[#25262b] border-t border-[#2f3136] mt-8">
-        <div className="max-w-7xl mx-auto py-4 px-4 sm:px-6 lg:px-8 text-center text-gray-400">
-          © 2024 HuCups サーベイ. All rights reserved.
+      <main className="pt-18 max-w-7xl mx-auto py-8 px-4 sm:px-6 lg:px-8">{children}</main>
+      <footer className="bg-white border-t border-gray-200 mt-12">
+        <div className="max-w-7xl mx-auto py-6 px-4 sm:px-6 lg:px-8">
+          <div className="text-center">
+            <div className="flex items-center justify-center gap-1.5 mb-2">
+              <span className="text-gray-500 text-xs">powered by</span>
+              <Image
+                src="/images/Sinmido_logo.png"
+                alt="Sinmido"
+                width={50}
+                height={20}
+                className="opacity-60"
+                priority
+              />
+            </div>
+            <p className="text-gray-400 text-xs">© 2024 Sinmido. All rights reserved.</p>
+          </div>
         </div>
       </footer>
     </div>
@@ -73,7 +93,7 @@ export default function UserLayout({
 function NavLink({ href, children, icon }: { href: string; children: React.ReactNode; icon: React.ReactNode }) {
   return (
     <Link href={href}>
-      <Button variant="ghost" className="text-gray-100 hover:text-white hover:bg-[#2f3136] transition-colors">
+      <Button variant="ghost" className="text-gray-700 hover:text-gray-900 hover:bg-gray-100 transition-colors">
         {icon}
         <span className="ml-2">{children}</span>
       </Button>

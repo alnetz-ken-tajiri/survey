@@ -41,7 +41,7 @@ export default function TextQuestion({ question, number }: TextQuestionProps) {
         value={value}
         onChange={handleChange}
         placeholder="回答を入力してください"
-        className="min-h-24 w-full p-2 bg-[#1a1b1e] text-gray-200 border border-[#3b3d42] rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+        className="min-h-24 w-full p-2 bg-white text-gray-900 border border-gray-200 rounded-lg focus:ring-2 focus:ring-gray-400 focus:border-gray-400 transition-all"
       />
     </QuestionCard>
   )

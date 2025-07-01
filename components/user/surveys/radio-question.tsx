@@ -54,18 +54,18 @@ export default function RadioQuestion({ question, number }: RadioQuestionProps) 
                 md:flex-1 md:min-w-0 md:justify-center md:flex-col md:py-4
                 ${
                   isSelected
-                    ? "bg-[#2a2b30] border border-blue-700"
-                    : "border border-[#3b3d42] hover:border-blue-700 hover:bg-[#2a2b30]"
+                    ? "bg-gray-50 border-2 border-gray-900"
+                    : "border-2 border-gray-200 hover:border-gray-400 hover:bg-gray-50"
                 }
               `}
             >
               <div
                 className={`
                   w-5 h-5 rounded-full flex items-center justify-center mr-3 md:mr-0 md:mb-2 transition-all
-                  ${isSelected ? "border-[5px] border-blue-500" : "border-2 border-gray-500"}
+                  ${isSelected ? "border-[5px] border-gray-900" : "border-2 border-gray-400"}
                 `}
               />
-              <span className="text-sm text-gray-200 md:text-center">{option.name}</span>
+              <span className="text-sm text-gray-700 md:text-center">{option.name}</span>
             </motion.div>
           )
         })}

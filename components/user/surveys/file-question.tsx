@@ -84,8 +84,8 @@ export default function FileQuestion({ question, number }: FileQuestionProps) {
             border-2 border-dashed rounded-lg p-4 text-center transition-all
             ${
               isDragging
-                ? "border-blue-500 bg-blue-900/20"
-                : "border-[#3b3d42] hover:border-blue-500 hover:bg-blue-900/10"
+                ? "border-gray-900 bg-gray-50"
+                : "border-gray-300 hover:border-gray-500 hover:bg-gray-50"
             }
           `}
         >
@@ -96,12 +96,12 @@ export default function FileQuestion({ question, number }: FileQuestionProps) {
             className="hidden"
             accept="image/*,.pdf,.doc,.docx,.xls,.xlsx"
           />
-          <Upload className="mx-auto h-8 w-8 text-blue-400" />
-          <p className="mt-1 text-sm font-medium text-gray-200">ファイルをドラッグ＆ドロップ</p>
-          <p className="text-xs text-gray-400">または</p>
+          <Upload className="mx-auto h-8 w-8 text-gray-600" />
+          <p className="mt-1 text-sm font-medium text-gray-700">ファイルをドラッグ＆ドロップ</p>
+          <p className="text-xs text-gray-500">または</p>
           <label
             htmlFor={question.id}
-            className="mt-2 inline-flex items-center px-3 py-1.5 bg-gradient-to-r from-blue-500 to-purple-500 text-white text-sm font-medium rounded-md hover:from-blue-600 hover:to-purple-600 cursor-pointer transition-colors"
+            className="mt-2 inline-flex items-center px-3 py-1.5 bg-gray-900 text-white text-sm font-medium rounded-md hover:bg-gray-800 cursor-pointer transition-colors"
           >
             ファイルを選択
           </label>
@@ -110,21 +110,21 @@ export default function FileQuestion({ question, number }: FileQuestionProps) {
         <motion.div
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
-          className="flex items-center justify-between p-3 bg-blue-900/20 rounded-lg border border-blue-800"
+          className="flex items-center justify-between p-3 bg-gray-50 rounded-lg border border-gray-200"
         >
           <div className="flex items-center">
-            <FileIcon className="h-6 w-6 text-blue-400 mr-2" />
+            <FileIcon className="h-6 w-6 text-gray-600 mr-2" />
             <div>
-              <p className="font-medium text-gray-200 truncate max-w-xs text-sm">{file.name}</p>
-              <p className="text-xs text-gray-400">{(file.size / 1024).toFixed(1)} KB</p>
+              <p className="font-medium text-gray-900 truncate max-w-xs text-sm">{file.name}</p>
+              <p className="text-xs text-gray-500">{(file.size / 1024).toFixed(1)} KB</p>
             </div>
           </div>
           <button
             onClick={removeFile}
-            className="p-1 rounded-full hover:bg-blue-800/50 transition-colors"
+            className="p-1 rounded-full hover:bg-gray-200 transition-colors"
             aria-label="Remove file"
           >
-            <X className="h-4 w-4 text-blue-400" />
+            <X className="h-4 w-4 text-gray-600" />
           </button>
         </motion.div>
       )}

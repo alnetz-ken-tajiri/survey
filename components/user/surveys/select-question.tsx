@@ -50,17 +50,17 @@ export default function SelectQuestion({ question, number }: SelectQuestionProps
         <Select value={value} onValueChange={handleChange}>
           <SelectTrigger
             id={question.id}
-            className="w-full p-2 text-left bg-[#1a1b1e] text-gray-200 border border-[#3b3d42] rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+            className="w-full p-2 text-left bg-white text-gray-900 border border-gray-200 rounded-lg focus:ring-2 focus:ring-gray-400 focus:border-gray-400 transition-all"
           >
             <SelectValue placeholder="選択してください" />
             <ChevronDown className="h-4 w-4 opacity-50" />
           </SelectTrigger>
-          <SelectContent className="bg-[#2f3136] border border-[#3b3d42] shadow-lg rounded-lg overflow-hidden">
+          <SelectContent className="bg-white border border-gray-200 shadow-lg rounded-lg overflow-hidden">
             {question.questionOptions.map((option) => (
               <SelectItem
                 key={option.id}
                 value={option.value}
-                className="p-2 cursor-pointer text-gray-200 hover:bg-blue-900/30 transition-colors data-[highlighted]:bg-blue-900/50 data-[highlighted]:text-blue-300"
+                className="p-2 cursor-pointer text-gray-900 hover:bg-gray-50 transition-colors data-[highlighted]:bg-gray-100 data-[highlighted]:text-gray-900"
               >
                 {option.name}
               </SelectItem>
