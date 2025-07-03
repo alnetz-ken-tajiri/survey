@@ -161,7 +161,7 @@ export default function SurveyListPage() {
                     
                   </DropdownMenuItem>
                   <DropdownMenuItem asChild>
-                    <Link href={`/admin/surveys/${survey.id}/graph`}>
+                    <Link href={`https://v0-hucups-syrvey-nf92aa.vercel.app`}>
                       <GanttChart className="mr-2 h-4 w-4" /> グラフ
                     </Link>
                   </DropdownMenuItem>
